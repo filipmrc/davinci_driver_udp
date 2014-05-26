@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <cstdlib>
 #include <string>
 #include <boost/regex.hpp>
+#include <boost/thread.hpp>
 #include "ros/ros.h"
 #include "davinci_driver/davinci_driver.h"
 
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
     }
 
     DavinciDriver d(ip, atoi(port.c_str()));
-
+    boost::thread driver_thread(&DavinciDriver::run, &d);
     ros::spin();
 
     return 0;
