@@ -35,6 +35,7 @@ public:
     void run();
 
     std::string state_formatted() const;
+    JSONNode get_state_json() const;
 
 private:
     boost::asio::io_service _io_service;
