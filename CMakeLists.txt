@@ -95,6 +95,7 @@ include_directories(
     "include"
     "libjson"
     ${catkin_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library

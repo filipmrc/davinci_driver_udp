@@ -21,16 +21,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstdlib>
 #include <string>
+#include <boost/bind.hpp>
 #include <boost/regex.hpp>
 #include <boost/thread.hpp>
 #include "ros/ros.h"
+#include "sensor_msgs/JointState.h"
 #include "davinci_driver/davinci_driver.h"
+
+void publish_joint_states(const ros::TimerEvent& event, const DavinciDriver* const d)
+{
+    std::cout << "Publishing" << std::endl;
+    std::cout << d->state_formatted() << std::endl;
+}
 
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "davinci_driver_node");
     
     ros::NodeHandle private_nh("~");
+    ros::NodeHandle ros_nh;
 
     std::string robot_ip_input;
     if (! private_nh.getParam("robot_ip", robot_ip_input))
@@ -57,8 +66,17 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    // Run driver
     DavinciDriver d(ip, atoi(port.c_str()));
     boost::thread driver_thread(&DavinciDriver::run, &d);
+
+    // Set up state publisher
+    ros::Publisher joint_state_publisher = ros_nh.advertise<sensor_msgs::JointState>("joint_states", 10);
+    ros::Timer joint_state_timer = ros_nh.createTimer(
+        ros::Duration(1.0),
+        boost::bind(publish_joint_states, _1, &d)
+    );
+
     ros::spin();
 
     return 0;

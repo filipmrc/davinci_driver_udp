@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 #include "libjson.h"
 #include "ros/ros.h"
 
@@ -33,23 +34,19 @@ public:
 
     void run();
 
-private:
-    ros::NodeHandle _ros_nh;
-    ros::Publisher _joint_state_publisher;
-    ros::Timer _joint_state_timer;
-    void _publish_joint_states(const ros::TimerEvent&);
+    std::string state_formatted() const;
 
+private:
     boost::asio::io_service _io_service;
     boost::asio::ip::tcp::socket _socket;
-    void _receive_loop();
 
+    JSONNode _state_node;
+    mutable boost::mutex _state_mutex;
     JSONStream _json_stream;
     static void _update_state(JSONNode&, void*);
     static void _bad_json(void*);
 
     void _banner();
-    void _demo_json();
-    void _demo_asio();
 };
 
 #endif
