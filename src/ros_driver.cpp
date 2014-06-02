@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <cstdlib>
+#include <iostream>
 #include <string>
 #include <boost/bind.hpp>
 #include <boost/regex.hpp>
@@ -28,11 +29,69 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "sensor_msgs/JointState.h"
 #include "davinci_driver/davinci_driver.h"
 
-void publish_joint_states(const ros::TimerEvent& event, const DavinciDriver* const d)
+class RosDavinciDriver
 {
-    std::cout << "Publishing" << std::endl;
-    std::cout << d->state_formatted() << std::endl;
-}
+public:
+    RosDavinciDriver(std::string robot_ip, unsigned short robot_port) :
+        _low_level_driver(robot_ip, robot_port)
+    {
+        _joint_state_publisher = _ros_nh.advertise<sensor_msgs::JointState>("joint_states", 10);
+
+        _joint_state_timer = _ros_nh.createTimer(
+            ros::Duration(1.0),
+            boost::bind(&RosDavinciDriver::_publish_joint_states, this, _1)
+        );
+
+        boost::thread driver_thread(&DavinciDriver::run, &_low_level_driver);
+    };
+
+private:
+    DavinciDriver _low_level_driver;
+
+    ros::NodeHandle _ros_nh;
+    ros::Publisher _joint_state_publisher;
+    ros::Timer _joint_state_timer;
+
+    void _publish_joint_states(const ros::TimerEvent& event)
+    {
+        sensor_msgs::JointState state;
+        _parse_json(
+            _low_level_driver.get_state_json(),
+            "",
+            state
+        );
+        if (state.name.size() > 0)
+        {
+            _joint_state_publisher.publish(state);
+        }
+    }
+
+    void _parse_json(const JSONNode &n, const std::string parent_string, sensor_msgs::JointState& state)
+    {
+        for (JSONNode::const_iterator i = n.begin(); i != n.end(); ++i)
+        {
+            // The node name is concatenated with that of its parents
+            // e.g. root-subnode-node
+            std::string node_name = i->name();;
+            if (!parent_string.empty())
+            {
+                node_name = parent_string + "-" + node_name;
+            }
+
+            // Recursively call ourselves to dig deeper into the tree
+            if (i->type() == JSON_ARRAY || i->type() == JSON_NODE){
+                _parse_json(*i, node_name, state);
+            }
+            // or note the value of a leaf node
+            else
+            {
+                state.name.push_back(node_name);
+                state.position.push_back(i->as_float());
+            }
+        }
+    }
+};
+
 
 int main(int argc, char *argv[])
 {
@@ -66,16 +125,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // Run driver
-    DavinciDriver d(ip, atoi(port.c_str()));
-    boost::thread driver_thread(&DavinciDriver::run, &d);
-
-    // Set up state publisher
-    ros::Publisher joint_state_publisher = ros_nh.advertise<sensor_msgs::JointState>("joint_states", 10);
-    ros::Timer joint_state_timer = ros_nh.createTimer(
-        ros::Duration(1.0),
-        boost::bind(publish_joint_states, _1, &d)
-    );
+    // Everything is in order; run the driver:
+    RosDavinciDriver r(ip, atoi(port.c_str()));
 
     ros::spin();
 

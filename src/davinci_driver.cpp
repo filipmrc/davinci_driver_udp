@@ -56,6 +56,12 @@ std::string DavinciDriver::state_formatted() const
     return _state_node.write_formatted();
 }
 
+JSONNode DavinciDriver::get_state_json() const
+{
+    boost::lock_guard<boost::mutex> state_guard(_state_mutex);
+    return _state_node;
+}
+
 void DavinciDriver::run()
 {
     while (true)
