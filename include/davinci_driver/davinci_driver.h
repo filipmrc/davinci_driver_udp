@@ -51,6 +51,9 @@ private:
     JSONStream _json_stream;
     static void _update_state(JSONNode&, void*);
     static void _bad_json(void*);
+
+    boost::thread _loop_thread;
+    void _loop();
 };
 
 #endif

@@ -46,6 +46,9 @@ DavinciDriver::DavinciDriver(std::string robot_ip, unsigned short robot_port)
 
 DavinciDriver::~DavinciDriver()
 {
+    _loop_thread.interrupt();
+    _loop_thread.join();
+
     if (_socket.is_open())
     {
         _socket.shutdown(ip::tcp::socket::shutdown_both);
@@ -78,21 +81,7 @@ void DavinciDriver::run()
     if (! _socket.is_open())
         throw std::logic_error("Not connected to Davinci.");
 
-    while (true)
-    {
-        boost::array<char, 128> buf;
-        boost::system::error_code error;
-
-        size_t len = _socket.read_some(boost::asio::buffer(buf), error);
-        std::cout << "Got " << len << " bytes." << std::endl;
-        if (error == boost::asio::error::eof)
-            break; // Connection closed cleanly by peer.
-        else if (error)
-            throw boost::system::system_error(error); // Some other error.
-
-        std::string incomming_json(buf.data(), len);
-        _json_stream << incomming_json;
-    }
+    _loop_thread = boost::thread(&DavinciDriver::run, this);
 }
 
 void DavinciDriver::_update_state(JSONNode& node, void* id)
@@ -143,4 +132,25 @@ void DavinciDriver::_update_state(JSONNode& node, void* id)
 void DavinciDriver::_bad_json(void* id)
 {
     std::cout << "Bad JSON" << std::endl;
+}
+
+void DavinciDriver::_loop()
+{
+    while (true)
+    {
+        // If the caller wants to stop executing, this thread stops here.
+        boost::this_thread::interruption_point();
+
+        // Read something from the socket.
+        boost::array<char, 128> buf;
+        boost::system::error_code error;
+        size_t len = _socket.read_some(boost::asio::buffer(buf), error);
+        if (error == boost::asio::error::eof)
+            break; // Connection closed cleanly by peer.
+        else if (error)
+            throw boost::system::system_error(error); // Some other error.
+
+        std::string incomming_json(buf.data(), len);
+        _json_stream << incomming_json;
+    }
 }

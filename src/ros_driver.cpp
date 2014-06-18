@@ -68,12 +68,12 @@ public:
         }
         std::cout << "\nConnection to Davinci established." << std::endl;
 
-        _driver_thread = boost::thread(&DavinciDriver::run, &_low_level_driver);
+        _low_level_driver.run();
     };
 
     ~RosDavinciDriver()
     {
-        _driver_thread.join();
+
     }
 
 private:
@@ -82,8 +82,6 @@ private:
     ros::NodeHandle _ros_nh;
     ros::Publisher _joint_state_publisher;
     ros::Timer _joint_state_timer;
-
-    boost::thread _driver_thread;
 
     void _publish_joint_states(const ros::TimerEvent& event)
     {
