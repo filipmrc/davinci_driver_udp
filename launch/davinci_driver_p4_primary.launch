@@ -1,0 +1,5 @@
+<launch>
+    <node name="davinci_driver_node_p4_primary" pkg="davinci_driver" type="davinci_driver_node" output="screen">
+        <param name="robot_ip" value="172.26.12.32:41229" /> <!-- substitution cipher d=4 a=1 v=22 i=9 [nchi] -->
+    </node>
+</launch>

@@ -38,12 +38,43 @@ public:
         _joint_state_publisher = _ros_nh.advertise<sensor_msgs::JointState>("joint_states", 10);
 
         _joint_state_timer = _ros_nh.createTimer(
-            ros::Duration(1.0),
+            ros::Duration(0.01),
             boost::bind(&RosDavinciDriver::_publish_joint_states, this, _1)
         );
 
-        boost::thread driver_thread(&DavinciDriver::run, &_low_level_driver);
+        bool retry_connection = true;
+        std::string retry_string = "Connection to Davinci refused, retrying";
+        while (retry_connection && ros::ok())
+        {
+            try
+            {
+                retry_connection = false;
+                _low_level_driver.connect();
+            }
+            catch (const boost::system::system_error& e)
+            {
+                if (e.code() == boost::asio::error::connection_refused)
+                {
+                    std::cout << retry_string;
+                    std::cout.flush();
+                    retry_string = ".";
+                    retry_connection = true;
+                    ros::spinOnce();
+                    ros::Duration(2.0).sleep();
+                }
+                else
+                    throw e;
+            }
+        }
+        std::cout << "\nConnection to Davinci established." << std::endl;
+
+        _driver_thread = boost::thread(&DavinciDriver::run, &_low_level_driver);
     };
+
+    ~RosDavinciDriver()
+    {
+        _driver_thread.join();
+    }
 
 private:
     DavinciDriver _low_level_driver;
@@ -52,14 +83,19 @@ private:
     ros::Publisher _joint_state_publisher;
     ros::Timer _joint_state_timer;
 
+    boost::thread _driver_thread;
+
     void _publish_joint_states(const ros::TimerEvent& event)
     {
         sensor_msgs::JointState state;
-        _parse_json(
-            _low_level_driver.get_state_json(),
-            "",
-            state
-        );
+        state.header.stamp = ros::Time::now();
+        state.name = _low_level_driver._joint_names;
+        state.position = _low_level_driver._joint_positions;
+        // _parse_json(
+        //     _low_level_driver.get_state_json(),
+        //     "",
+        //     state
+        // );
         if (state.name.size() > 0)
         {
             _joint_state_publisher.publish(state);
@@ -79,14 +115,27 @@ private:
             }
 
             // Recursively call ourselves to dig deeper into the tree
-            if (i->type() == JSON_ARRAY || i->type() == JSON_NODE){
+            if (i->type() == JSON_NODE)
+            {
                 _parse_json(*i, node_name, state);
             }
-            // or note the value of a leaf node
+
+            // if we get an array, it is the position, velocity, effort and setpoint
+            else if (i->type() == JSON_ARRAY)
+            {
+                state.name.push_back(node_name);
+                state.position.push_back((*i)[0].as_float());
+                state.velocity.push_back((*i)[1].as_float());
+                state.effort.push_back((*i)[2].as_float());
+            }
+
+            // if we get a single value, it is a position.
             else
             {
                 state.name.push_back(node_name);
                 state.position.push_back(i->as_float());
+                state.velocity.push_back(0.0);
+                state.effort.push_back(0.0);
             }
         }
     }
@@ -125,7 +174,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // Everything is in order; run the driver:
+    // Everything is in order; start the driver:
     RosDavinciDriver r(ip, atoi(port.c_str()));
 
     ros::spin();

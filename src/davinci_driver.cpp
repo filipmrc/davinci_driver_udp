@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <boost/array.hpp>
 #include "davinci_driver/davinci_driver.h"
 
@@ -39,16 +40,18 @@ DavinciDriver::DavinciDriver(std::string robot_ip, unsigned short robot_port)
         this
     )
 {
-    _banner();
-    
-    // Connect to the robot
     ip::address_v4 ip_asio_t = ip::address_v4::from_string(robot_ip);
-    ip::tcp::endpoint robot_ep(ip_asio_t, robot_port);
-    _socket.connect(robot_ep);
+    _robot_ep = ip::tcp::endpoint(ip_asio_t, robot_port);
 }
 
 DavinciDriver::~DavinciDriver()
-{}
+{
+    if (_socket.is_open())
+    {
+        _socket.shutdown(ip::tcp::socket::shutdown_both);
+        _socket.close();
+    }
+}
 
 std::string DavinciDriver::state_formatted() const
 {
@@ -62,8 +65,19 @@ JSONNode DavinciDriver::get_state_json() const
     return _state_node;
 }
 
+void DavinciDriver::connect()
+{
+    boost::system::error_code error;
+    _socket.connect(_robot_ep, error);
+    if (error)
+        throw boost::system::system_error(error);
+}
+
 void DavinciDriver::run()
 {
+    if (! _socket.is_open())
+        throw std::logic_error("Not connected to Davinci.");
+
     while (true)
     {
         boost::array<char, 128> buf;
@@ -86,16 +100,47 @@ void DavinciDriver::_update_state(JSONNode& node, void* id)
     DavinciDriver * driver_pointer = static_cast<DavinciDriver*>(id);
 
     boost::lock_guard<boost::mutex> state_guard(driver_pointer->_state_mutex);
-    driver_pointer->_state_node = node;
+
+    // We got at node, get the name of the root node
+    JSONNode::const_iterator root_iter = node.begin();
+    std::string root_name = root_iter->name();
+
+    // ends with -name
+    if (0 == root_name.compare(root_name.length() - 5, 5, "-name"))
+    {
+        std::string root_prefix = root_name.substr(0, root_name.length() - 5);
+        for(JSONNode::const_iterator name_array = root_iter->begin(); name_array != root_iter->end(); ++name_array)
+        {
+            std::string joint_name = root_prefix + "-" + name_array->as_string();
+            bool name_exists = false;
+            for(size_t i; i < driver_pointer->_joint_names.size(); ++i)
+            {
+                if (joint_name.compare(driver_pointer->_joint_names[i]) == 0)
+                {
+                    name_exists = true;
+                    break;
+                }
+            }
+            if (!name_exists)
+            {
+                driver_pointer->_joint_names.push_back(joint_name);
+            }
+        }
+    }
+
+    // ends with -position
+    if (0 == root_name.compare(root_name.length() - 4, 4, "-pos"))
+    {
+        driver_pointer->_joint_positions.clear();
+        for(JSONNode::const_iterator pos_array = root_iter->begin(); pos_array != root_iter->end(); ++pos_array)
+        {
+            double joint_position = pos_array->as_float();
+            driver_pointer->_joint_positions.push_back(joint_position);
+        }
+    }
 }
 
 void DavinciDriver::_bad_json(void* id)
 {
     std::cout << "Bad JSON" << std::endl;
-}
-
-void DavinciDriver::_banner()
-{
-    std::cout << "Davinci driver" << std::endl;
-    std::cout << "--------------" << std::endl;
 }

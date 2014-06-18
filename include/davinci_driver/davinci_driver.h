@@ -32,13 +32,18 @@ public:
     DavinciDriver(std::string robot_ip, unsigned short robot_port);
     ~DavinciDriver();
 
+    void connect();
     void run();
 
     std::string state_formatted() const;
     JSONNode get_state_json() const;
 
+    std::vector<std::string> _joint_names;
+    std::vector<double> _joint_positions;
+
 private:
     boost::asio::io_service _io_service;
+    boost::asio::ip::tcp::endpoint _robot_ep;
     boost::asio::ip::tcp::socket _socket;
 
     JSONNode _state_node;
@@ -46,8 +51,6 @@ private:
     JSONStream _json_stream;
     static void _update_state(JSONNode&, void*);
     static void _bad_json(void*);
-
-    void _banner();
 };
 
 #endif
