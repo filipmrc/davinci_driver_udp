@@ -47,25 +47,14 @@ DavinciDriver::DavinciDriver(std::string robot_ip, unsigned short robot_port)
 DavinciDriver::~DavinciDriver()
 {
     _loop_thread.interrupt();
-    _loop_thread.join();
 
     if (_socket.is_open())
     {
         _socket.shutdown(ip::tcp::socket::shutdown_both);
         _socket.close();
     }
-}
 
-std::string DavinciDriver::state_formatted() const
-{
-    boost::lock_guard<boost::mutex> state_guard(_state_mutex);
-    return _state_node.write_formatted();
-}
-
-JSONNode DavinciDriver::get_state_json() const
-{
-    boost::lock_guard<boost::mutex> state_guard(_state_mutex);
-    return _state_node;
+    _loop_thread.join();
 }
 
 void DavinciDriver::connect()
@@ -78,14 +67,19 @@ void DavinciDriver::connect()
 
 void DavinciDriver::run()
 {
+    std::cout << "Entering run()" << std::endl;
     if (! _socket.is_open())
         throw std::logic_error("Not connected to Davinci.");
 
-    _loop_thread = boost::thread(&DavinciDriver::run, this);
+    _loop_thread = boost::thread(&DavinciDriver::_loop, this);
+    std::cout << "Exiting run()" << std::endl;
 }
 
 void DavinciDriver::_update_state(JSONNode& node, void* id)
 {
+    std::cout << "Entering _update_state" << std::endl;
+    std::cout << node.write_formatted() << std::endl;
+
     DavinciDriver * driver_pointer = static_cast<DavinciDriver*>(id);
 
     boost::lock_guard<boost::mutex> state_guard(driver_pointer->_state_mutex);
@@ -127,6 +121,8 @@ void DavinciDriver::_update_state(JSONNode& node, void* id)
             driver_pointer->_joint_positions.push_back(joint_position);
         }
     }
+
+    std::cout << "Exiting _update_state" << std::endl;
 }
 
 void DavinciDriver::_bad_json(void* id)

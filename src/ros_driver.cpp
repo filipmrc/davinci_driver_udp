@@ -38,7 +38,7 @@ public:
         _joint_state_publisher = _ros_nh.advertise<sensor_msgs::JointState>("joint_states", 10);
 
         _joint_state_timer = _ros_nh.createTimer(
-            ros::Duration(0.01),
+            ros::Duration(0.02),
             boost::bind(&RosDavinciDriver::_publish_joint_states, this, _1)
         );
 

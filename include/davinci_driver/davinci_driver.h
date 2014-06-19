@@ -46,7 +46,6 @@ private:
     boost::asio::ip::tcp::endpoint _robot_ep;
     boost::asio::ip::tcp::socket _socket;
 
-    JSONNode _state_node;
     mutable boost::mutex _state_mutex;
     JSONStream _json_stream;
     static void _update_state(JSONNode&, void*);
