@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef DAVINCI_DRIVER_H
 #define DAVINCI_DRIVER_H
 
+#include <map>
 #include <string>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
@@ -35,9 +36,6 @@ public:
     void connect();
     void run();
 
-    std::string state_formatted() const;
-    JSONNode get_state_json() const;
-
     std::vector<std::string> _joint_names;
     std::vector<double> _joint_positions;
 
@@ -50,9 +48,12 @@ private:
     JSONStream _json_stream;
     static void _update_state(JSONNode&, void*);
     static void _bad_json(void*);
+    bool _got_bad_json;
 
     boost::thread _loop_thread;
     void _loop();
+
+    std::map<std::string, size_t> _offset_map;
 };
 
 #endif

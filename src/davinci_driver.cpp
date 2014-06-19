@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sstream>
 #include <stdexcept>
 #include <boost/array.hpp>
+#include <boost/regex.hpp>
 #include "davinci_driver/davinci_driver.h"
 
 using namespace boost::asio;
@@ -38,7 +39,8 @@ DavinciDriver::DavinciDriver(std::string robot_ip, unsigned short robot_port)
         _update_state,
         _bad_json,
         this
-    )
+    ),
+    _got_bad_json(false)
 {
     ip::address_v4 ip_asio_t = ip::address_v4::from_string(robot_ip);
     _robot_ep = ip::tcp::endpoint(ip_asio_t, robot_port);
@@ -67,67 +69,72 @@ void DavinciDriver::connect()
 
 void DavinciDriver::run()
 {
-    std::cout << "Entering run()" << std::endl;
     if (! _socket.is_open())
         throw std::logic_error("Not connected to Davinci.");
 
     _loop_thread = boost::thread(&DavinciDriver::_loop, this);
-    std::cout << "Exiting run()" << std::endl;
 }
 
 void DavinciDriver::_update_state(JSONNode& node, void* id)
 {
-    std::cout << "Entering _update_state" << std::endl;
+    std::cout << "Good JSON" << std::endl;
     std::cout << node.write_formatted() << std::endl;
 
     DavinciDriver * driver_pointer = static_cast<DavinciDriver*>(id);
 
     boost::lock_guard<boost::mutex> state_guard(driver_pointer->_state_mutex);
 
-    // We got at node, get the name of the root node
+    // We got a node, get the name of the root node
     JSONNode::const_iterator root_iter = node.begin();
+    // Maybe there is no root.
+    if (root_iter == node.end())
+        return;
     std::string root_name = root_iter->name();
 
-    // ends with -name
-    if (0 == root_name.compare(root_name.length() - 5, 5, "-name"))
+    boost::regex expression("(.*)-(\\w*)");
+    boost::smatch regex_result;
+
+    if(boost::regex_match(root_name, regex_result, expression))
     {
-        std::string root_prefix = root_name.substr(0, root_name.length() - 5);
-        for(JSONNode::const_iterator name_array = root_iter->begin(); name_array != root_iter->end(); ++name_array)
+        std::string root_prefix = regex_result[1];
+        std::string message_type = regex_result[2];
+
+        if ("name" == message_type)
         {
-            std::string joint_name = root_prefix + "-" + name_array->as_string();
-            bool name_exists = false;
-            for(size_t i; i < driver_pointer->_joint_names.size(); ++i)
+            // If the prefix has allready reported its names, we wil disregard it.
+            if (! driver_pointer->_offset_map.count(root_prefix))
             {
-                if (joint_name.compare(driver_pointer->_joint_names[i]) == 0)
+                driver_pointer->_offset_map[root_prefix] = driver_pointer->_joint_names.size();
+                for(JSONNode::const_iterator name_array = root_iter->begin(); name_array != root_iter->end(); ++name_array)
                 {
-                    name_exists = true;
-                    break;
+                    std::string joint_name = root_prefix + "-" + name_array->as_string();
+                    driver_pointer->_joint_names.push_back(joint_name);
+                    driver_pointer->_joint_positions.push_back(0.0);
                 }
             }
-            if (!name_exists)
+        }
+        else if ("pos" == message_type)
+        {
+            // The prefix needs to be known
+            if (driver_pointer->_offset_map.count(root_prefix))
             {
-                driver_pointer->_joint_names.push_back(joint_name);
+                size_t position_i = driver_pointer->_offset_map[root_prefix];
+                for(JSONNode::const_iterator pos_array = root_iter->begin(); pos_array != root_iter->end(); ++pos_array)
+                {
+                    double joint_position = pos_array->as_float();
+                    driver_pointer->_joint_positions[position_i] = joint_position;
+                    position_i += 1;
+                }
             }
         }
     }
-
-    // ends with -position
-    if (0 == root_name.compare(root_name.length() - 4, 4, "-pos"))
-    {
-        driver_pointer->_joint_positions.clear();
-        for(JSONNode::const_iterator pos_array = root_iter->begin(); pos_array != root_iter->end(); ++pos_array)
-        {
-            double joint_position = pos_array->as_float();
-            driver_pointer->_joint_positions.push_back(joint_position);
-        }
-    }
-
-    std::cout << "Exiting _update_state" << std::endl;
 }
 
 void DavinciDriver::_bad_json(void* id)
 {
     std::cout << "Bad JSON" << std::endl;
+    DavinciDriver * driver_pointer = static_cast<DavinciDriver*>(id);
+    driver_pointer->_got_bad_json = true;
 }
 
 void DavinciDriver::_loop()
@@ -147,6 +154,12 @@ void DavinciDriver::_loop()
             throw boost::system::system_error(error); // Some other error.
 
         std::string incomming_json(buf.data(), len);
+        std::cout << "got: " << incomming_json << std::endl;
+        if (_got_bad_json)
+        {
+            _json_stream.reset();
+            _got_bad_json = false;
+        }
         _json_stream << incomming_json;
     }
 }
