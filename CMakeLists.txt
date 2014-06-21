@@ -6,6 +6,8 @@ project(davinci_driver)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  controller_manager
+  hardware_interface
 )
 
 ## System dependencies are found with CMake's conventions
@@ -88,9 +90,6 @@ catkin_package(
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-# include_directories(include)
 include_directories(
     "include"
     "libjson"
@@ -98,12 +97,6 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
 )
 
-## Declare a cpp library
-# add_library(davinci_driver
-#   src/${PROJECT_NAME}/davinci_driver.cpp
-# )
-
-## Declare a cpp executable
 set(libjson_files
     libjson/_internal/Source/JSONAllocator.cpp
     libjson/_internal/Source/internalJSONNode.cpp
@@ -126,13 +119,15 @@ add_executable(davinci_driver_node
     src/davinci_driver.cpp
     ${libjson_files}
 )
-
-## Add cmake target dependencies of the executable/library
-## as an example, message headers may need to be generated before nodes
-# add_dependencies(davinci_driver_node davinci_driver_generate_messages_cpp)
-
-## Specify libraries to link a library or executable target against
 target_link_libraries(davinci_driver_node
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+)
+
+add_executable(empty_davinci_node
+    src/empty_davinci.cpp
+)
+target_link_libraries(empty_davinci_node
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )

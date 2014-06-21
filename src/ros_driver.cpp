@@ -1,6 +1,6 @@
 /*
 ROS driver for Davinci Robot.
-Main ROS node for interacting with the Davinci surgical robot at the 
+Main ROS node for interacting with the Davinci surgical robot at the
 control lab at Aalborg university.
 
 Copyright (C) 2014 Karl D. Hansen (kdh@es.aau.dk)
@@ -143,7 +143,7 @@ private:
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "davinci_driver_node");
-    
+
     ros::NodeHandle private_nh("~");
     ros::NodeHandle ros_nh;
 
@@ -159,8 +159,8 @@ int main(int argc, char *argv[])
     std::string ip, port;
     if(boost::regex_match(robot_ip_input.c_str(), what, expression))
     {
-        // what[0] contains the whole string 
-        // what[1] contains the ip address 
+        // what[0] contains the whole string
+        // what[1] contains the ip address
         // what[2] contains the port
         ip = what[1].str();
         port = what[2].str();
