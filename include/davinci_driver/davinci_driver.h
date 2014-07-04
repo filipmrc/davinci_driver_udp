@@ -20,40 +20,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef DAVINCI_DRIVER_H
 #define DAVINCI_DRIVER_H
 
-#include <map>
+#include <memory>
 #include <string>
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
-#include "libjson.h"
-#include "ros/ros.h"
+#include <utility>
+#include <vector>
+#include <boost/shared_ptr.hpp>
+#include "davinci_driver/sbrio_driver.h"
 
 class DavinciDriver
 {
 public:
-    DavinciDriver(std::string robot_ip, unsigned short robot_port);
+    DavinciDriver(std::vector<std::pair<std::string, unsigned short> > robot_ips);
     ~DavinciDriver();
 
     void connect();
-    void run();
+    bool initialized() const;
 
-    std::vector<std::string> _joint_names;
-    std::vector<double> _joint_positions;
+    void read();
+    void write();
+
+    std::vector<std::string> get_names() const;
+
+    std::vector<double> joint_positions;
+    std::vector<double> joint_velocities;
+    std::vector<double> joint_efforts;
+    std::vector<double> joint_setpoints;
 
 private:
-    boost::asio::io_service _io_service;
-    boost::asio::ip::tcp::endpoint _robot_ep;
-    boost::asio::ip::tcp::socket _socket;
+    std::vector<boost::shared_ptr<SbrioDriver> > _sbRioDrivers;
 
-    mutable boost::mutex _state_mutex;
-    JSONStream _json_stream;
-    static void _update_state(JSONNode&, void*);
-    static void _bad_json(void*);
-    bool _got_bad_json;
+    mutable bool _all_initialized;
 
-    boost::thread _loop_thread;
-    void _loop();
-
-    std::map<std::string, size_t> _offset_map;
+    std::vector<std::string> _joint_names;
+    std::vector<std::vector<std::string>::iterator> _offset_names;
+    std::vector<std::vector<double>::iterator> _offset_positions;
+    std::vector<std::vector<double>::iterator> _offset_velocities;
+    std::vector<std::vector<double>::iterator> _offset_efforts;
+    std::vector<std::vector<double>::iterator> _offset_setpoints;
 };
 
 #endif

@@ -116,18 +116,12 @@ set(libjson_files
 
 add_executable(davinci_driver_node
     src/ros_driver.cpp
+    src/ros_davinci_driver.cpp
     src/davinci_driver.cpp
+    src/sbrio_driver.cpp
     ${libjson_files}
 )
 target_link_libraries(davinci_driver_node
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
-)
-
-add_executable(empty_davinci_node
-    src/empty_davinci.cpp
-)
-target_link_libraries(empty_davinci_node
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
 )

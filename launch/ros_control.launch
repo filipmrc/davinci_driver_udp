@@ -1,6 +1,14 @@
 <launch>
-    <!-- Launch the empty driver -->
-    <node name="empty_davinci" type="empty_davinci_node" pkg="davinci_driver" output="screen" ns="davinci"/>
+    <param
+        name="robot_description"
+        textfile="$(find davinci_description)/robots/davinci_description.URDF" />
+
+    <!-- Launch the driver -->
+    <rosparam
+        command="load"
+        file="$(find davinci_driver)/config/davinci_ips.yaml"
+    />
+    <node name="davinci_driver_node" type="davinci_driver_node" pkg="davinci_driver" output="screen" ns="davinci" />
 
     <!-- Load joint controller configurations from YAML file to parameter server -->
     <rosparam
