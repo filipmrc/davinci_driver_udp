@@ -34,7 +34,14 @@
         respawn="false"
         output="screen"
         ns="davinci"
-        args="joint_position_controller"
+        args="p4_hand_roll_controller"
     />
 
+<!-- p4_hand_roll_controller
+p4_hand_pitch_controller
+p4_instrument_slide_controller
+p4_instrument_roll_controller
+p4_instrument_pitch_controller
+p4_instrument_jaw_left_controller
+p4_instrument_jaw_right_controller -->
  </launch>

@@ -131,8 +131,11 @@ void SbrioDriver::_loop()
                 setpoint_array.push_back(JSONNode("", *i));
             }
 
+            JSONNode header_node(JSON_NODE);
+            header_node.set_name(_root_header);
+            header_node.push_back(setpoint_array);
             JSONNode root_node(JSON_NODE);
-            root_node.push_back(setpoint_array);
+            root_node.push_back(header_node);
             std::string send_string = root_node.write() + "\r\n";
             boost::asio::write(_socket, boost::asio::buffer(send_string, send_string.size()));
 
@@ -157,35 +160,73 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
         return;
 
     std::string root_name = root_iter->name();
-    boost::regex expression("(.*)-names");
+    boost::regex expression("(.*)_names");
     boost::smatch regex_result;
 
     if(boost::regex_match(root_name, regex_result, expression)) // It is a initialization message.
     {
+        driver_pointer->_root_header = regex_result[1];
+
         // If the prefix has already reported its names, we wil disregard it.
         if (! driver_pointer->initialized())
         {
-            boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
-            for(JSONNode::const_iterator name_array = root_iter->begin(); name_array != root_iter->end(); ++name_array)
+            // get the position names (for now this is the only part we'll use)
+            JSONNode::const_iterator name_type = root_iter->begin();
+            for(; name_type != root_iter->end(); ++name_type)
             {
-                std::string joint_name = name_array->as_string();
-                driver_pointer->joint_names.push_back(joint_name);
-                driver_pointer->joint_positions.push_back(0.0);
-                driver_pointer->joint_velocities.push_back(0.0);
-                driver_pointer->joint_efforts.push_back(0.0);
-                driver_pointer->joint_setpoints.push_back(0.0);
+                if (name_type->name() == "position")
+                {
+                    boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
+                    for(JSONNode::const_iterator name_array = name_type->begin(); name_array != name_type->end(); ++name_array)
+                    {
+                        std::string joint_name = name_array->as_string();
+                        driver_pointer->joint_names.push_back(joint_name);
+                        driver_pointer->joint_positions.push_back(0.0);
+                        driver_pointer->joint_velocities.push_back(0.0);
+                        driver_pointer->joint_efforts.push_back(0.0);
+                        driver_pointer->joint_setpoints.push_back(0.0);
+                    }
+                    driver_pointer->_initialized = true;
+                }
             }
-            driver_pointer->_initialized = true;
         }
     }
+
     else // it is a state update.
     {
         boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
-        size_t i = 0;
-        for(JSONNode::const_iterator pos_array = root_iter->begin(); pos_array != root_iter->end(); ++pos_array)
+
+        JSONNode::const_iterator name_type = root_iter->begin();
+        for(; name_type != root_iter->end(); ++name_type)
         {
-            driver_pointer->joint_positions[i] = pos_array->as_float();
-            i += 1;
+            std::string type = name_type->name();
+            if (type == "position")
+            {
+                size_t i = 0;
+                for(JSONNode::const_iterator pos = name_type->begin(); pos != name_type->end(); ++pos)
+                {
+                    double joint_pos = pos->as_float();
+                    driver_pointer->joint_positions[i++] = joint_pos;
+                }
+            }
+            else if (type == "velocity")
+            {
+                size_t i = 0;
+                for(JSONNode::const_iterator vel = name_type->begin(); vel != name_type->end(); ++vel)
+                {
+                    double joint_vel = vel->as_float();
+                    driver_pointer->joint_velocities[i++] = joint_vel;
+                }
+            }
+            else if (type == "effort")
+            {
+                size_t i = 0;
+                for(JSONNode::const_iterator eff = name_type->begin(); eff != name_type->end(); ++eff)
+                {
+                    double joint_eff = eff->as_float();
+                    driver_pointer->joint_efforts[i++] = joint_eff;
+                }
+            }
         }
     }
 }

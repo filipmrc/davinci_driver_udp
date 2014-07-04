@@ -1,48 +1,11 @@
-{
-  "p4": {
-    "arm":{
-      "elevation": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "yaw1": 0.0000000,
-      "yaw2": 0.0000000,
-      "yaw3": 0.0000000,
-      "yaw4": 0.0000000,
-      "roll": 0.0000000
-    },
-    "hand":{
-      "roll": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "pitch": [0.0000000, 0.0000000, 0.0000000, 0.0000000]
-    },
-    "instrument":{
-      "jaw-left": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "jaw-right": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "pitch": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "roll": [0.0000000, 0.0000000, 0.0000000, 0.0000000]
-    }
-  },
-  "system": {
-    "fault": false
-  }
-}
+{"p4_arm_names":{"position":["p4_arm_roll","p4_arm_pitch"]}}
+{"p4_hand_names":{"position":["p4_hand_roll","p4_hand_pitch"]}}
+{"p4_hand":{"effort":[0.5,0.8]}}
+{"p4_hand":{"velocity":[0.1,2.8]}}
+{"p4_hand":{"position":[3.4,5.1]}}
 
-{
-  "p4": {
-    "arm":{
-      "elevation": [1.0000000, 1.0000000, 1.0000000, 1.0000000],
-      "yaw1": 0.0000000,
-      "yaw2": 0.0000000,
-      "yaw3": 0.0000000,
-      "yaw4": 0.0000000,
-      "roll": 0.0000000
-    },
-    "hand":{
-      "roll": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "pitch": [0.0000000, 0.0000000, 0.0000000, 0.0000000]
-    },
-    "instrument":{
-      "jaw-left": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "jaw-right": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "pitch": [0.0000000, 0.0000000, 0.0000000, 0.0000000],
-      "roll": [0.0000000, 0.0000000, 0.0000000, 0.0000000]
-    }
-  }
-}
+
+
+
+{"p4_primary_names":{"position":["p4_instrument_jaw_left","p4_instrument_jaw_right","p4_instrument_pitch","p4_instrument_roll","p4_instrument_slide","p4_hand_pitch","p4_hand_roll"],"velocity":["p4_instrument_jaw_left","p4_instrument_jaw_right","p4_instrument_pitch","p4_instrument_roll","p4_instrument_slide","p4_hand_pitch","p4_hand_roll"],"effort":["p4_instrument_jaw_left","p4_instrument_jaw_right","p4_instrument_pitch","p4_instrument_roll","p4_instrument_slide","p4_hand_pitch","p4_hand_roll","p4_hand_pitch_slave","p4_hand_roll_slave"],"setpoints":["p4_instrument_jaw_left","p4_instrument_jaw_right","p4_instrument_pitch","p4_instrument_roll","p4_instrument_slide","p4_hand_pitch","p4_hand_roll","p4_hand_pitch_slave","p4_hand_roll_slave"]}}
+{"p4_hand":{"position":[0,0,0,0,0,0,1]}}

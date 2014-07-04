@@ -57,6 +57,8 @@ private:
     static void _update_state(JSONNode&, void*);
     static void _bad_json(void*);
     bool _got_bad_json;
+
+    std::string _root_header;
 };
 
 #endif
