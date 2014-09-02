@@ -80,10 +80,10 @@ find_package(Boost REQUIRED COMPONENTS system regex thread)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES davinci_driver
-#  CATKIN_DEPENDS roscpp
-#  DEPENDS system_lib
+    INCLUDE_DIRS include
+    LIBRARIES davinci_driver_node
+    CATKIN_DEPENDS roscpp controller_manager hardware_interface
+    # DEPENDS system_lib
 )
 
 ###########
