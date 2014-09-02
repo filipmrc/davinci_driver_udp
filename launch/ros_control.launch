@@ -1,7 +1,7 @@
 <launch>
-    <param
-        name="robot_description"
-        textfile="$(find davinci_description)/robots/davinci_description.URDF" />
+
+<param name="robot_description"
+    command="$(find xacro)/xacro.py '$(find davinci_description)/robots/davinci_description.xacro'" />
 
     <!-- Launch the driver -->
     <rosparam
@@ -9,6 +9,12 @@
         file="$(find davinci_driver)/config/davinci_ips.yaml"
     />
     <node name="davinci_driver_node" type="davinci_driver_node" pkg="davinci_driver" output="screen" ns="davinci" />
+
+
+    <!-- Combine joint values -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="joint_states" to="/davinci/joint_states" />
+    </node>
 
     <!-- Load joint controller configurations from YAML file to parameter server -->
     <rosparam
@@ -34,14 +40,16 @@
         respawn="false"
         output="screen"
         ns="davinci"
-        args="p4_hand_roll_controller"
+        args="p4_hand_controller"
     />
 
-<!-- p4_hand_roll_controller
-p4_hand_pitch_controller
+<!-- 
 p4_instrument_slide_controller
 p4_instrument_roll_controller
 p4_instrument_pitch_controller
 p4_instrument_jaw_left_controller
-p4_instrument_jaw_right_controller -->
+p4_instrument_jaw_right_controller
+p4_hand_roll_controller 
+p4_instrument_jaw_left_controller
+ -->
  </launch>
