@@ -116,7 +116,6 @@ set(libjson_files
 
 add_executable(davinci_driver_node
     src/ros_driver.cpp
-    src/ros_davinci_driver.cpp
     src/davinci_driver.cpp
     src/sbrio_driver.cpp
     ${libjson_files}
