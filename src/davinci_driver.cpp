@@ -185,22 +185,3 @@ void DavinciDriver::write()
         throw std::runtime_error("Attemt to write state before driver is initialized.");
     }
 }
-
-// void DavinciDriver::update_setpoints(const std::vector<double>& setpoints)
-// {
-//     if (setpoints.size() != _joint_setpoints.size())
-//         throw std::length_error("Size of setpoints-vector to be updated is different from the state vector.");
-
-//     boost::lock_guard<boost::mutex> state_guard(_joint_setpoints_mutex);
-//     _joint_setpoints.assign(setpoints.begin(), setpoints.end());
-
-//     JSONNode setpoint_array(JSON_ARRAY);
-//     setpoint_array.set_name("new_setpoints");
-//     for(std::vector<double>::const_iterator i = setpoints.begin(); i != setpoints.end(); ++i)
-//     {
-//         setpoint_array.push_back("", *i);
-//     }
-
-//     JSONNode root_node(JSON_NODE);
-//     root_node.push_back(setpoint_array);
-// }

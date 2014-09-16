@@ -39,7 +39,8 @@ SbrioDriver::SbrioDriver(std::string robot_ip, unsigned short robot_port)
     _got_bad_json(false),
     _connected(false),
     _initialized(false),
-    new_setpoints(false)
+    new_setpoints(false),
+    new_motor_enables(false)
 {
     ip::address_v4 ip_asio_t = ip::address_v4::from_string(robot_ip);
     _robot_ep = ip::tcp::endpoint(ip_asio_t, robot_port);
@@ -142,6 +143,28 @@ void SbrioDriver::_loop()
             new_setpoints = false;
         }
 
+        if (new_motor_enables)
+        {
+            boost::lock_guard<boost::mutex> state_guard(state_mutex);
+
+            JSONNode enables_array(JSON_ARRAY);
+            enables_array.set_name("enablemotor");
+            for(std::vector<bool>::const_iterator i = motor_enables.begin(); i != motor_enables.end(); ++i)
+            {
+                enables_array.push_back(JSONNode("", *i));
+            }
+
+            JSONNode header_node(JSON_NODE);
+            header_node.set_name(_root_header);
+            header_node.push_back(enables_array);
+            JSONNode root_node(JSON_NODE);
+            root_node.push_back(header_node);
+            std::string send_string = root_node.write() + "\r\n";
+            boost::asio::write(_socket, boost::asio::buffer(send_string, send_string.size()));
+
+            new_motor_enables = false;
+        }
+
         // If the caller wants to stop executing, this thread stops here.
         boost::this_thread::sleep(boost::posix_time::millisec(1));
     }
@@ -186,9 +209,20 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
                         driver_pointer->joint_efforts.push_back(0.0);
                         driver_pointer->joint_setpoints.push_back(0.0);
                     }
-                    driver_pointer->_initialized = true;
+                }
+                if (name_type->name() == "motoractive")
+                {
+                    boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
+                    for(JSONNode::const_iterator name_array = name_type->begin(); name_array != name_type->end(); ++name_array)
+                    {
+                        std::string motor_name = name_array->as_string();
+                        driver_pointer->motor_names.push_back(motor_name);
+                        driver_pointer->motor_actives.push_back(false);
+                        driver_pointer->motor_enables.push_back(false);
+                    }
                 }
             }
+            driver_pointer->_initialized = true;
         }
     }
 
@@ -225,6 +259,15 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
                 {
                     double joint_eff = eff->as_float();
                     driver_pointer->joint_efforts[i++] = joint_eff;
+                }
+            }
+            else if (type == "motoractive")
+            {
+                size_t i = 0;
+                for(JSONNode::const_iterator act = name_type->begin(); act != name_type->end(); ++act)
+                {
+                    bool motor_act = act->as_bool();
+                    driver_pointer->motor_actives[i++] = motor_act;
                 }
             }
         }

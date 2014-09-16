@@ -40,8 +40,12 @@ public:
     std::vector<double> joint_velocities;
     std::vector<double> joint_efforts;
     std::vector<double> joint_setpoints;
+    std::vector<std::string> motor_names;
+    std::vector<bool> motor_actives;
+    std::vector<bool> motor_enables;
     boost::mutex state_mutex;
     bool new_setpoints;
+    bool new_motor_enables;
 
 private:
     boost::asio::io_service _io_service;

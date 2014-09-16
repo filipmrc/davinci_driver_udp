@@ -23,13 +23,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <string>
 #include <utility>
+
 #include <boost/bind.hpp>
 #include <boost/regex.hpp>
 #include <boost/thread.hpp>
-#include "ros/ros.h"
-#include "ros/console.h"
-#include "controller_manager/controller_manager.h"
-#include "davinci_driver/ros_davinci_driver.h"
+
+#include <ros/ros.h>
+#include <ros/console.h>
+#include <controller_manager/controller_manager.h>
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <hardware_interface/joint_command_interface.h>
+#include <hardware_interface/joint_state_interface.h>
+#include <hardware_interface/robot_hw.h>
+
+#include "davinci_driver/davinci_driver.h"
+
+class RosDavinciDriver : public hardware_interface::RobotHW
+{
+public:
+    RosDavinciDriver(std::vector<std::pair<std::string, unsigned short> > robot_ips);
+    ~RosDavinciDriver(){};
+
+    void read(){
+        _low_level_driver.read();
+    };
+
+    void write(){
+        _low_level_driver.write();
+    };
+
+private:
+    DavinciDriver _low_level_driver;
+
+    hardware_interface::JointStateInterface _joint_state_interface;
+    hardware_interface::EffortJointInterface _effort_joint_interface;
+
+    diagnostic_updater::Updater updater;
+};
 
 RosDavinciDriver::RosDavinciDriver(std::vector<std::pair<std::string, unsigned short> > robot_ips) :
     _low_level_driver(robot_ips)
@@ -71,19 +101,6 @@ RosDavinciDriver::RosDavinciDriver(std::vector<std::pair<std::string, unsigned s
     registerInterface(&_effort_joint_interface);
 
     ROS_INFO("Davinci driver initialized.");
-}
-
-RosDavinciDriver::~RosDavinciDriver()
-{}
-
-void RosDavinciDriver::read()
-{
-    _low_level_driver.read();
-}
-
-void RosDavinciDriver::write()
-{
-    _low_level_driver.write();
 }
 
 
