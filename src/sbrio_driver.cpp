@@ -149,7 +149,7 @@ void SbrioDriver::_loop()
 
             JSONNode enables_array(JSON_ARRAY);
             enables_array.set_name("enablemotor");
-            for(std::vector<bool>::const_iterator i = motor_enables.begin(); i != motor_enables.end(); ++i)
+            for(std::vector<bool>::const_iterator i = motors_enabled.begin(); i != motors_enabled.end(); ++i)
             {
                 enables_array.push_back(JSONNode("", *i));
             }
@@ -186,17 +186,18 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
     boost::regex expression("(.*)_names");
     boost::smatch regex_result;
 
-    if(boost::regex_match(root_name, regex_result, expression)) // It is a initialization message.
+    // Handle initialization messages.
+    if(boost::regex_match(root_name, regex_result, expression))
     {
         driver_pointer->_root_header = regex_result[1];
 
-        // If the prefix has already reported its names, we wil disregard it.
+        // If the sbRIO has already reported its names, we wil disregard it.
         if (! driver_pointer->initialized())
         {
-            // get the position names (for now this is the only part we'll use)
             JSONNode::const_iterator name_type = root_iter->begin();
             for(; name_type != root_iter->end(); ++name_type)
             {
+                // Get the position names of the joint (and initialize its velocity and effort).
                 if (name_type->name() == "position")
                 {
                     boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
@@ -210,6 +211,7 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
                         driver_pointer->joint_setpoints.push_back(0.0);
                     }
                 }
+                // Get the names of the motors, for active state and enabling.
                 if (name_type->name() == "motoractive")
                 {
                     boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
@@ -217,16 +219,16 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
                     {
                         std::string motor_name = name_array->as_string();
                         driver_pointer->motor_names.push_back(motor_name);
-                        driver_pointer->motor_actives.push_back(false);
-                        driver_pointer->motor_enables.push_back(false);
+                        driver_pointer->motors_active.push_back(false);
+                        driver_pointer->motors_enabled.push_back(false);
                     }
                 }
             }
             driver_pointer->_initialized = true;
         }
     }
-
-    else // it is a state update.
+    // Handle state updates.
+    else
     {
         boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
 
@@ -267,7 +269,7 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
                 for(JSONNode::const_iterator act = name_type->begin(); act != name_type->end(); ++act)
                 {
                     bool motor_act = act->as_bool();
-                    driver_pointer->motor_actives[i++] = motor_act;
+                    driver_pointer->motors_active[i++] = motor_act;
                 }
             }
         }

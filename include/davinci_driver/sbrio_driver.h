@@ -41,8 +41,8 @@ public:
     std::vector<double> joint_efforts;
     std::vector<double> joint_setpoints;
     std::vector<std::string> motor_names;
-    std::vector<bool> motor_actives;
-    std::vector<bool> motor_enables;
+    std::vector<bool> motors_active;
+    std::vector<bool> motors_enabled;
     boost::mutex state_mutex;
     bool new_setpoints;
     bool new_motor_enables;

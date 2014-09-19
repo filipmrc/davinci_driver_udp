@@ -39,12 +39,17 @@ public:
     void read();
     void write();
 
-    std::vector<std::string> get_names() const;
-
+    std::vector<std::string> get_joint_names() const;
     std::vector<double> joint_positions;
     std::vector<double> joint_velocities;
     std::vector<double> joint_efforts;
     std::vector<double> joint_setpoints;
+
+    std::vector<std::string> get_motor_names() const;
+    std::vector<std::string> get_active_motors() const;
+    std::vector<bool> get_active_motors_vector() const;
+    std::vector<std::string> get_enabled_motors() const;
+    void enable_motor(std::string motor_name, bool enable);
 
 private:
     std::vector<boost::shared_ptr<SbrioDriver> > _sbRioDrivers;

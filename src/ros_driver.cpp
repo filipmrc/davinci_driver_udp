@@ -41,7 +41,50 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class RosDavinciDriver : public hardware_interface::RobotHW
 {
 public:
-    RosDavinciDriver(std::vector<std::pair<std::string, unsigned short> > robot_ips);
+    RosDavinciDriver(std::vector<std::pair<std::string, unsigned short> > robot_ips) :
+        _low_level_driver(robot_ips)
+    {
+        ROS_INFO("Connecting to Davinci Robot...");
+        boost::thread connect_thread(boost::bind(&DavinciDriver::connect, &_low_level_driver));
+        // Wait for connection or termination
+        while(ros::ok() && connect_thread.joinable())
+        {
+            connect_thread.timed_join(boost::posix_time::seconds(0.1));
+        }
+        // if we were terminated while waiting for connection
+        if (! ros::ok())
+        {
+            connect_thread.interrupt();
+            connect_thread.join();
+            return;
+        }
+        ROS_INFO("Connection to Davinci established.");
+
+        std::vector<std::string> joint_names = _low_level_driver.get_joint_names();
+        for(size_t i = 0; i < joint_names.size(); ++i)
+        {
+            hardware_interface::JointStateHandle state_handle(
+                joint_names[i],
+                &_low_level_driver.joint_positions[i],
+                &_low_level_driver.joint_velocities[i],
+                &_low_level_driver.joint_efforts[i]
+            );
+            _joint_state_interface.registerHandle(state_handle);
+
+            hardware_interface::JointHandle effort_handle(
+                state_handle,
+                &_low_level_driver.joint_efforts[i]
+            );
+            _effort_joint_interface.registerHandle(effort_handle);
+        }
+        registerInterface(&_joint_state_interface);
+        registerInterface(&_effort_joint_interface);
+
+        _motor_names = _low_level_driver.get_motor_names();
+
+        ROS_INFO("Davinci driver initialized.");
+    };
+
     ~RosDavinciDriver(){};
 
     void read(){
@@ -52,56 +95,29 @@ public:
         _low_level_driver.write();
     };
 
+    void check_motor_active_states(diagnostic_updater::DiagnosticStatusWrapper &stat)
+    {
+        stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "All motors active");
+        
+        std::vector<bool> act_mts = _low_level_driver.get_active_motors_vector();
+        for (size_t i = 0; i < act_mts.size(); ++i)
+        {
+            std::string state = "Inactive";
+            if (act_mts[i])
+                state = "Active";
+            stat.add(_motor_names[i], state);
+        }
+    };
+
 private:
     DavinciDriver _low_level_driver;
 
     hardware_interface::JointStateInterface _joint_state_interface;
     hardware_interface::EffortJointInterface _effort_joint_interface;
 
-    diagnostic_updater::Updater updater;
+    std::vector<std::string> _motor_names;
+
 };
-
-RosDavinciDriver::RosDavinciDriver(std::vector<std::pair<std::string, unsigned short> > robot_ips) :
-    _low_level_driver(robot_ips)
-{
-    ROS_INFO("Connecting to Davinci Robot...");
-    boost::thread connect_thread(boost::bind(&DavinciDriver::connect, &_low_level_driver));
-    // Wait for connection or termination
-    while(ros::ok() && connect_thread.joinable())
-    {
-        connect_thread.timed_join(boost::posix_time::seconds(0.1));
-    }
-    // if we were terminated while waiting for connection
-    if (! ros::ok())
-    {
-        connect_thread.interrupt();
-        connect_thread.join();
-        return;
-    }
-    ROS_INFO("Connection to Davinci established.");
-
-    std::vector<std::string> joint_names = _low_level_driver.get_names();
-    for(size_t i = 0; i < joint_names.size(); ++i)
-    {
-        hardware_interface::JointStateHandle state_handle(
-            joint_names[i],
-            &_low_level_driver.joint_positions[i],
-            &_low_level_driver.joint_velocities[i],
-            &_low_level_driver.joint_efforts[i]
-        );
-        _joint_state_interface.registerHandle(state_handle);
-
-        hardware_interface::JointHandle effort_handle(
-            state_handle,
-            &_low_level_driver.joint_efforts[i]
-        );
-        _effort_joint_interface.registerHandle(effort_handle);
-    }
-    registerInterface(&_joint_state_interface);
-    registerInterface(&_effort_joint_interface);
-
-    ROS_INFO("Davinci driver initialized.");
-}
 
 
 int main(int argc, char *argv[])
@@ -146,19 +162,28 @@ int main(int argc, char *argv[])
     // and start the driver:
     RosDavinciDriver ros_driver(robot_ips);
     controller_manager::ControllerManager cm(&ros_driver);
+    
+    // Set up a diagnostics updater to report the status of the
+    // motor drives.
+    diagnostic_updater::Updater diag_updater;
+    diag_updater.setHardwareID("none");
+    diag_updater.add("Motor Active States", &ros_driver, &RosDavinciDriver::check_motor_active_states);
 
     // Now to the business
     ros::Time last = ros::Time::now();
     ros::Rate r(100);
     while(ros::ok())
     {
+        // ros_control loop
         ros::Time current_time = ros::Time::now();
-
         ros_driver.read();
         cm.update(current_time, current_time - last);
         ros_driver.write();
-
         last = current_time;
+
+        // update the diagnostics with motor active states
+        diag_updater.update();
+
         r.sleep();
     }
 

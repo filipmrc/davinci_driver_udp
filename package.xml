@@ -20,4 +20,8 @@
   <run_depend>controller_manager</run_depend>
   <run_depend>hardware_interface</run_depend>
 
+  <export>
+    <rosdoc config="rosdoc.yaml" />
+  </export>
+
 </package>
