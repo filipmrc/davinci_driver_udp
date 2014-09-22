@@ -81,17 +81,12 @@ void DavinciDriver::connect()
         }
 
         // If this is the time where all sbRIOs have been initialized
-        // then get the names and initialize the state vectors.
+        // then initialize the state vectors.
         if (_all_initialized)
         {
             for (size_t i = 0; i < _sbRioDrivers.size(); ++i)
             {
                 boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[i]->state_mutex);
-                //Names
-                std::vector<std::string>::const_iterator start_str = _sbRioDrivers[i]->joint_names.begin();
-                std::vector<std::string>::const_iterator stop_str = _sbRioDrivers[i]->joint_names.end();
-                _joint_names.insert(_joint_names.end(), start_str, stop_str);
-                _offset_names.push_back(_joint_names.end());
                 //Positions
                 std::vector<double>::const_iterator start = _sbRioDrivers[i]->joint_positions.begin();
                 std::vector<double>::const_iterator stop = _sbRioDrivers[i]->joint_positions.end();
@@ -137,7 +132,16 @@ std::vector<std::string> DavinciDriver::get_joint_names() const
     if (! initialized())
         throw std::runtime_error("Attemt to get joint names before driver is initialized.");
 
-    return _joint_names;
+    std::vector<std::string> joint_names;
+    for (size_t sbrio_i = 0; sbrio_i < _sbRioDrivers.size(); ++sbrio_i)
+    {
+        for (size_t joint_i = 0; joint_i < _sbRioDrivers[sbrio_i]->joint_names.size(); ++joint_i)
+        {
+            joint_names.push_back(_sbRioDrivers[sbrio_i]->joint_names[joint_i]);
+        }
+    }
+
+    return joint_names;
 }
 
 /// Get all names of the motors on the robot.
@@ -153,8 +157,6 @@ std::vector<std::string> DavinciDriver::get_motor_names() const
     std::vector<std::string> motor_names;
     for (size_t sbrio_i = 0; sbrio_i < _sbRioDrivers.size(); ++sbrio_i)
     {
-        boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[sbrio_i]->state_mutex);
-
         for (size_t motor_i = 0; motor_i < _sbRioDrivers[sbrio_i]->motor_names.size(); ++motor_i)
         {
             motor_names.push_back(_sbRioDrivers[sbrio_i]->motor_names[motor_i]);
@@ -178,8 +180,6 @@ std::vector<std::string> DavinciDriver::get_active_motors() const
     std::vector<std::string> act_mts;
     for (size_t sbrio_i = 0; sbrio_i < _sbRioDrivers.size(); ++sbrio_i)
     {
-        boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[sbrio_i]->state_mutex);
-
         for (size_t motor_i = 0; motor_i < _sbRioDrivers[sbrio_i]->motor_names.size(); ++motor_i)
         {
             if (_sbRioDrivers[sbrio_i]->motors_active[motor_i])
@@ -203,7 +203,6 @@ std::vector<bool> DavinciDriver::get_active_motors_vector() const
     std::vector<bool> act_mts;
     for (size_t sbrio_i = 0; sbrio_i < _sbRioDrivers.size(); ++sbrio_i)
     {
-        boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[sbrio_i]->state_mutex);
         act_mts.insert(act_mts.end(),
                        _sbRioDrivers[sbrio_i]->motors_active.begin(),
                        _sbRioDrivers[sbrio_i]->motors_active.end());
@@ -226,8 +225,6 @@ std::vector<std::string> DavinciDriver::get_enabled_motors() const
     std::vector<std::string> en_mts;
     for (size_t sbrio_i = 0; sbrio_i < _sbRioDrivers.size(); ++sbrio_i)
     {
-        boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[sbrio_i]->state_mutex);
-
         for (size_t motor_i = 0; motor_i < _sbRioDrivers[sbrio_i]->motor_names.size(); ++motor_i)
         {
             if (_sbRioDrivers[sbrio_i]->motors_enabled[motor_i])
@@ -244,23 +241,28 @@ std::vector<std::string> DavinciDriver::get_enabled_motors() const
 /// @param enable True to enable output, false to disable.
 void DavinciDriver::enable_motor(std::string motor_name, bool enable)
 {
-    // if (! initialized())
-    //     throw std::runtime_error("Attemt enable motor before driver is initialized.");
+    if (! initialized())
+        throw std::runtime_error("Attemt to enable motor before driver is initialized.");
 
-    // if (_motor_names.size() == 0)
-    //     throw std::runtime_error("Can't enable " + motor_name + "; no motors are connected");
+    // Loop through the motor names of the sbRIOs
+    bool didnt_find_it = true;
+    for (size_t sbrio_i = 0; sbrio_i < _sbRioDrivers.size(); ++sbrio_i)
+    {
+        for (size_t motor_i = 0; motor_i < _sbRioDrivers[sbrio_i]->motor_names.size(); ++motor_i)
+        {
+            if (motor_name == _sbRioDrivers[sbrio_i]->motor_names[motor_i])
+            {
+                boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[sbrio_i]->state_mutex);
+                _sbRioDrivers[sbrio_i]->motors_enabled[motor_i] = enable;
+                _sbRioDrivers[sbrio_i]->new_motor_enables = true;
+                didnt_find_it = false;
+                break;
+            }
+        }
+    }
 
-    // size_t i = 0;
-    // for(; i < _motor_names.size(); ++i)
-    // {
-    //     if (motor_name == _motor_names[i])
-    //     {
-    //         _motors_enabled[i] = enable;
-    //         break;
-    //     }
-    // }
-    // if (i == _motor_names.size())
-    //     throw std::runtime_error("No motor \"" + motor_name + "\" connected");
+    if (didnt_find_it)
+        throw std::runtime_error("No motor \"" + motor_name + "\" connected");
 }
 
 void DavinciDriver::read()

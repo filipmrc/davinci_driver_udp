@@ -15,10 +15,12 @@
   <build_depend>roscpp</build_depend>
   <build_depend>controller_manager</build_depend>
   <build_depend>hardware_interface</build_depend>
+  <build_depend>message_generation</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>controller_manager</run_depend>
   <run_depend>hardware_interface</run_depend>
+  <run_depend>message_runtime</run_depend>
 
   <export>
     <rosdoc config="rosdoc.yaml" />

@@ -55,13 +55,6 @@ private:
     std::vector<boost::shared_ptr<SbrioDriver> > _sbRioDrivers;
 
     mutable bool _all_initialized;
-
-    std::vector<std::string> _joint_names;
-    std::vector<std::vector<std::string>::iterator> _offset_names;
-    std::vector<std::vector<double>::iterator> _offset_positions;
-    std::vector<std::vector<double>::iterator> _offset_velocities;
-    std::vector<std::vector<double>::iterator> _offset_efforts;
-    std::vector<std::vector<double>::iterator> _offset_setpoints;
 };
 
 #endif

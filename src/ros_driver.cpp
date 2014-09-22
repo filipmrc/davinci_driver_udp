@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <hardware_interface/robot_hw.h>
 
 #include "davinci_driver/davinci_driver.h"
+#include "davinci_driver/EnableMotor.h"
 
 class RosDavinciDriver : public hardware_interface::RobotHW
 {
@@ -80,8 +81,6 @@ public:
         registerInterface(&_joint_state_interface);
         registerInterface(&_effort_joint_interface);
 
-        _motor_names = _low_level_driver.get_motor_names();
-
         ROS_INFO("Davinci driver initialized.");
     };
 
@@ -99,24 +98,37 @@ public:
     {
         stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "All motors active");
         
+        std::vector<std::string> mt_names = _low_level_driver.get_motor_names();
         std::vector<bool> act_mts = _low_level_driver.get_active_motors_vector();
         for (size_t i = 0; i < act_mts.size(); ++i)
         {
             std::string state = "Inactive";
             if (act_mts[i])
                 state = "Active";
-            stat.add(_motor_names[i], state);
+            stat.add(mt_names[i], state);
         }
     };
+
+    bool enable_motor_callback(davinci_driver::EnableMotor::Request& req, davinci_driver::EnableMotor::Response& res)
+    {
+        bool success = true;
+        try
+        {
+            _low_level_driver.enable_motor(req.motor_name, req.enable);
+        }
+        catch (std::runtime_error)
+        {
+            success = false;
+        }
+
+        return success;
+    }
 
 private:
     DavinciDriver _low_level_driver;
 
     hardware_interface::JointStateInterface _joint_state_interface;
     hardware_interface::EffortJointInterface _effort_joint_interface;
-
-    std::vector<std::string> _motor_names;
-
 };
 
 
@@ -169,6 +181,11 @@ int main(int argc, char *argv[])
     diag_updater.setHardwareID("none");
     diag_updater.add("Motor Active States", &ros_driver, &RosDavinciDriver::check_motor_active_states);
 
+    // Advertise a service to enable and disable motors
+    ros::ServiceServer enable_motors_service = ros_nh.advertiseService("enable_motor",
+                                                                       &RosDavinciDriver::enable_motor_callback,
+                                                                       &ros_driver);
+
     // Now to the business
     ros::Time last = ros::Time::now();
     ros::Rate r(100);
@@ -182,6 +199,7 @@ int main(int argc, char *argv[])
         last = current_time;
 
         // update the diagnostics with motor active states
+        // this will only update if the update interval is reached.
         diag_updater.update();
 
         r.sleep();

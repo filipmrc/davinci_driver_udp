@@ -1,0 +1,3 @@
+- builder: doxygen
+  name: Davinci Surgery Robot ROS Driver
+  exclude_patterns: '*/libjson/*'
