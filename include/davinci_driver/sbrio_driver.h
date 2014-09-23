@@ -40,6 +40,7 @@ public:
     std::vector<double> joint_velocities;
     std::vector<double> joint_efforts;
     std::vector<double> joint_setpoints;
+    std::vector<bool> joint_setpoints_mask;
     std::vector<std::string> motor_names;
     std::vector<bool> motors_active;
     std::vector<bool> motors_enabled;

@@ -121,25 +121,26 @@ void SbrioDriver::_loop()
         }
 
         // Write something to the socket
+        bool content_ready = false; // keep track, if actual content was written.
+        JSONNode header_node(JSON_NODE);
+        header_node.set_name(_root_header);
+
         if (new_setpoints)
         {
             boost::lock_guard<boost::mutex> state_guard(state_mutex);
 
             JSONNode setpoint_array(JSON_ARRAY);
             setpoint_array.set_name("setpoints");
-            for(std::vector<double>::const_iterator i = joint_setpoints.begin(); i != joint_setpoints.end(); ++i)
+            for(size_t i = 0; i < joint_setpoints.size(); ++i)
             {
-                setpoint_array.push_back(JSONNode("", *i));
+                if (joint_setpoints_mask[i])
+                {
+                    setpoint_array.push_back(JSONNode("", joint_setpoints[i]));
+                    content_ready = true;
+                }
             }
 
-            JSONNode header_node(JSON_NODE);
-            header_node.set_name(_root_header);
             header_node.push_back(setpoint_array);
-            JSONNode root_node(JSON_NODE);
-            root_node.push_back(header_node);
-            std::string send_string = root_node.write() + "\r\n";
-            boost::asio::write(_socket, boost::asio::buffer(send_string, send_string.size()));
-
             new_setpoints = false;
         }
 
@@ -154,15 +155,17 @@ void SbrioDriver::_loop()
                 enables_array.push_back(JSONNode("", *i));
             }
 
-            JSONNode header_node(JSON_NODE);
-            header_node.set_name(_root_header);
             header_node.push_back(enables_array);
+            content_ready = true;
+            new_motor_enables = false;
+        }
+
+        if (content_ready)
+        {
             JSONNode root_node(JSON_NODE);
             root_node.push_back(header_node);
             std::string send_string = root_node.write() + "\r\n";
             boost::asio::write(_socket, boost::asio::buffer(send_string, send_string.size()));
-
-            new_motor_enables = false;
         }
 
         // If the caller wants to stop executing, this thread stops here.
@@ -209,8 +212,28 @@ void SbrioDriver::_update_state(JSONNode& node, void* id)
                         driver_pointer->joint_velocities.push_back(0.0);
                         driver_pointer->joint_efforts.push_back(0.0);
                         driver_pointer->joint_setpoints.push_back(0.0);
+                        driver_pointer->joint_setpoints_mask.push_back(false);
                     }
                 }
+
+                // Get the names of the joints that take setpoints, and enable them in the mask.
+                if (name_type->name() == "setpoints")
+                {
+                    boost::lock_guard<boost::mutex> state_guard(driver_pointer->state_mutex);
+                    for(JSONNode::const_iterator name_array = name_type->begin(); name_array != name_type->end(); ++name_array)
+                    {
+                        std::string joint_name = name_array->as_string();
+                        for(size_t i = 0; i < driver_pointer->joint_names.size(); ++i)
+                        {
+                            if (joint_name == driver_pointer->joint_names[i])
+                            {
+                                driver_pointer->joint_setpoints_mask[i] = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 // Get the names of the motors, for active state and enabling.
                 if (name_type->name() == "motoractive")
                 {
