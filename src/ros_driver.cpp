@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <hardware_interface/robot_hw.h>
 
 #include "davinci_driver/davinci_driver.h"
+#include "davinci_driver/GetMotorNames.h"
 #include "davinci_driver/EnableMotor.h"
 
 class RosDavinciDriver : public hardware_interface::RobotHW
@@ -109,6 +110,21 @@ public:
         }
     };
 
+    bool get_motor_names_callback(davinci_driver::GetMotorNames::Request& req, davinci_driver::GetMotorNames::Response& res)
+    {
+        bool success = true;
+        try
+        {
+            res.motor_names = _low_level_driver.get_motor_names();
+        }
+        catch (std::runtime_error)
+        {
+            success = false;
+        }
+
+        return success;
+    }
+
     bool enable_motor_callback(davinci_driver::EnableMotor::Request& req, davinci_driver::EnableMotor::Response& res)
     {
         bool success = true;
@@ -174,12 +190,18 @@ int main(int argc, char *argv[])
     // and start the driver:
     RosDavinciDriver ros_driver(robot_ips);
     controller_manager::ControllerManager cm(&ros_driver);
+    // The driver blocks here until it is initialized.
     
     // Set up a diagnostics updater to report the status of the
     // motor drives.
     diagnostic_updater::Updater diag_updater;
     diag_updater.setHardwareID("none");
     diag_updater.add("Motor Active States", &ros_driver, &RosDavinciDriver::check_motor_active_states);
+
+    // Advertise a service to get the names of the motors
+    ros::ServiceServer get_motor_names_service = ros_nh.advertiseService("get_motor_names",
+                                                                       &RosDavinciDriver::get_motor_names_callback,
+                                                                       &ros_driver);
 
     // Advertise a service to enable and disable motors
     ros::ServiceServer enable_motors_service = ros_nh.advertiseService("enable_motor",

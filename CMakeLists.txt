@@ -13,10 +13,10 @@ find_package(Boost REQUIRED COMPONENTS system regex thread)
 add_service_files(
   FILES
   EnableMotor.srv
+  GetMotorNames.srv
 )
 
-generate_messages(
-)
+generate_messages()
 
 catkin_package(
     INCLUDE_DIRS include
