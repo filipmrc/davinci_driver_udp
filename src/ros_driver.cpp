@@ -73,14 +73,14 @@ public:
             );
             _joint_state_interface.registerHandle(state_handle);
 
-            hardware_interface::JointHandle effort_handle(
+            hardware_interface::JointHandle position_handle(
                 state_handle,
-                &_low_level_driver.joint_efforts[i]
+                &_low_level_driver.joint_positions[i]
             );
-            _effort_joint_interface.registerHandle(effort_handle);
+            _position_joint_interface.registerHandle(position_handle);
         }
         registerInterface(&_joint_state_interface);
-        registerInterface(&_effort_joint_interface);
+        registerInterface(&_position_joint_interface);
 
         ROS_INFO("Davinci driver initialized.");
     };
@@ -98,7 +98,7 @@ public:
     void check_motor_active_states(diagnostic_updater::DiagnosticStatusWrapper &stat)
     {
         stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "All motors active");
-        
+
         std::vector<std::string> mt_names = _low_level_driver.get_motor_names();
         std::vector<bool> act_mts = _low_level_driver.get_active_motors_vector();
         for (size_t i = 0; i < act_mts.size(); ++i)
@@ -144,7 +144,7 @@ private:
     DavinciDriver _low_level_driver;
 
     hardware_interface::JointStateInterface _joint_state_interface;
-    hardware_interface::EffortJointInterface _effort_joint_interface;
+    hardware_interface::PositionJointInterface _position_joint_interface;
 };
 
 

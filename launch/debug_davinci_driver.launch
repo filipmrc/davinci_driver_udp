@@ -1,8 +1,0 @@
-<launch>
-    <rosparam
-        command="load"
-        file="$(find davinci_driver)/config/davinci_ips.yaml"
-    />
-
-    <node launch-prefix="gdb -ex run --args" name="davinci_driver_node" pkg="davinci_driver" type="davinci_driver_node" output="screen" ns="davinci"/>
-</launch>

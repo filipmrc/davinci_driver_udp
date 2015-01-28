@@ -299,7 +299,7 @@ void DavinciDriver::write()
 {
     if (_all_initialized)
     {
-        std::vector<double>::iterator set_iter = joint_efforts.begin();
+        std::vector<double>::iterator set_iter = joint_positions.begin();
         for (size_t i = 0; i < _sbRioDrivers.size(); ++i)
         {
             boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[i]->state_mutex);

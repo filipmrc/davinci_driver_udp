@@ -1,11 +1,63 @@
+<!--
+Launch file for the driver.
+
+Karl D. Hansen (kdh@es.aau.dk)
+-->
+
 <launch>
+    <!--
+    If not using default ips, remember to load them
+    into the param server elsewhere.
+    -->
+    <arg name="default_ips" default="true" />
+
+    <!--
+    Load the IPs of the davinci embedded controllers
+    into the parameter server as a list.
+    -->
     <rosparam
+        if="$(arg default_ips)"
         command="load"
-        file="$(find davinci_driver)/config/davinci_ips.yaml"
+        file="$(find davinci_bringup)/config/davinci_ip_adresses.yaml"
     />
 
     <node name="davinci_driver_node" pkg="davinci_driver" type="davinci_driver_node" output="screen" ns="davinci" />
-    <!-- <node name="davinci_driver_node" pkg="davinci_driver" type="davinci_driver_node" output="screen">
-        <param name="robot_ip" value="127.0.0.1:41229" /> substitution cipher d=4 a=1 v=22 i=9 [nchi]
-    </node> -->
+
+    <!-- Load the robot description into the param server. -->
+    <param name="robot_description"
+        command="$(find xacro)/xacro.py '$(find davinci_description)/robots/davinci_description.xacro'" />
+
+    <!-- Combine joint values into the tf tree based on the above model. -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <remap from="joint_states" to="/davinci/joint_states" />
+    </node>
+
+    <!-- Load joint controller configurations from YAML file to parameter server -->
+    <rosparam
+        command="load"
+        file="$(find davinci_driver)/config/p4_hand_controller.yaml"
+    />
+
+    <!-- load the controllers -->
+    <node
+        name="controller_spawner_joint_state_controller"
+        pkg="controller_manager"
+        type="spawner"
+        respawn="false"
+        output="screen"
+        ns="davinci"
+        args="joint_state_controller"
+    />
+
+    <node
+        name="controller_spawner_position_controller"
+        pkg="controller_manager"
+        type="spawner"
+        respawn="false"
+        output="screen"
+        ns="davinci"
+        args="p4_hand_controller"
+    />
+
+
 </launch>
