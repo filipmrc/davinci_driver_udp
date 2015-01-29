@@ -18,19 +18,19 @@ Karl D. Hansen (kdh@es.aau.dk)
     <rosparam
         if="$(arg default_ips)"
         command="load"
-        file="$(find davinci_bringup)/config/davinci_ip_adresses.yaml"
+        file="$(find davinci_driver)/config/davinci_ip_adresses.yaml"
     />
 
-    <node name="davinci_driver_node" pkg="davinci_driver" type="davinci_driver_node" output="screen" ns="davinci" />
+    <node name="davinci_driver_node" pkg="davinci_driver" type="davinci_driver_node" output="screen" ns="davinci">
+        <remap from="/davinci/joint_states" to="/joint_states" />
+    </node>
 
     <!-- Load the robot description into the param server. -->
     <param name="robot_description"
         command="$(find xacro)/xacro.py '$(find davinci_description)/robots/davinci_description.xacro'" />
 
     <!-- Combine joint values into the tf tree based on the above model. -->
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-      <remap from="joint_states" to="/davinci/joint_states" />
-    </node>
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
 
     <!-- Load joint controller configurations from YAML file to parameter server -->
     <rosparam
