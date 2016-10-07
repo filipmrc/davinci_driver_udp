@@ -46,7 +46,7 @@ Karl D. Hansen (kdh@es.aau.dk)
         respawn="false"
         output="screen"
         ns="davinci"
-        args="joint_state_controller"
+        args="joint_state_controller --shutdown-timeout 1"
     />
 
     <node
@@ -56,7 +56,7 @@ Karl D. Hansen (kdh@es.aau.dk)
         respawn="false"
         output="screen"
         ns="davinci"
-        args="p4_hand_controller"
+        args="p4_hand_controller --shutdown-timeout 1"
     />
 
 
