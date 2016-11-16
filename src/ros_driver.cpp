@@ -215,13 +215,12 @@ int main(int argc, char *argv[])
     {
         // ros_control loop
         ros::Time current_time = ros::Time::now();
-        ROS_INFO_STREAM("Read");
+
         ros_driver.read();
-	ROS_INFO_STREAM("write");
         cm.update(current_time, current_time - last);
         ros_driver.write();
         last = current_time;
-	ROS_INFO_STREAM("udpate");
+
         // update the diagnostics with motor active states
         // this will only update if the update interval is reached.
         //diag_updater.update();

@@ -125,25 +125,42 @@ void SbrioDriver_UDP::_loop()
 {
 	while (true)
 	{
-	
-		boost::array<char, NUMBER_OF_JOINTS*8+1> send_buf;
+		int i,j;
+		boost::array<char, NUMBER_OF_JOINTS*FLOAT_LENGTH+1> send_buf;
         	// Write something to the socket
 		bool new_contents = false;
 		if (new_setpoints)
 		{
 			boost::lock_guard<boost::mutex> state_guard(state_mutex);
-			memcpy(&send_buf, &joint_setpoints, sizeof(joint_setpoints));
-			//new_setpoints = false;
+
+			//memcpy(&send_buf, &joint_setpoints, sizeof(joint_setpoints));
+
+			for(i=0;i<joint_setpoints.size();i++){
+				
+				float f = (float)joint_setpoints[i];
+				char *floatToConvert = (char*)&f;
+				char convertedFloat[FLOAT_LENGTH];
+				for(j=0;j<FLOAT_LENGTH;j++)
+					convertedFloat[j] = floatToConvert[FLOAT_LENGTH-1-j];
+				memcpy(&send_buf[i],&convertedFloat, sizeof(f));
+			}
+			//new_setpoints = false; //TODO this line should be uncommented for "real" operation
 			new_contents = true;
 		}
 		if (new_motor_enables)
 		{
 			boost::lock_guard<boost::mutex> state_guard(state_mutex);		
-			send_buf[motor_names.size()*sizeof(double)] = _bool_to_char(motors_enabled);
+			send_buf[motor_names.size()*sizeof(float)] = _bool_to_char(motors_enabled);
 
 			new_motor_enables = false;
 			new_contents = true;
 		}
+
+			/*for(i=0;i<send_buf.size();i++)
+				std::cout << std::hex <<(int)joint_setpoints[i];
+			std::cout << std::endl;*/
+
+
 		if (new_contents)
 			_socket.send(boost::asio::buffer(send_buf));
 
@@ -158,7 +175,7 @@ void SbrioDriver_UDP::_loop()
 			printf("\n");*/
 		}
 
-        boost::this_thread::sleep(boost::posix_time::millisec(10));
+        boost::this_thread::sleep(boost::posix_time::millisec(100));
 	}
 }
 
@@ -194,12 +211,12 @@ void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
 		//connexion timeout tracking
 		_no_packet_received = 0;
 
-		
 
 		//packet handling
 		//update the position, velocity and effort for each motor
 		for(i=0;i<motor_names.size();i++)
 		{	
+
 			joint_positions[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH);
 			joint_velocities[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH + vector_length);
 			joint_efforts[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH + vector_length*2);
@@ -222,15 +239,24 @@ void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
 double SbrioDriver_UDP::_binary_to_double(char* buf, int index)
 {
 	char tmp_buf[4];
-	tmp_buf[0] = buf[index+0];
-	tmp_buf[1] = buf[index+1];
-	tmp_buf[2] = buf[index+2];
-	tmp_buf[3] = buf[index+3];
-		/*int i; //affiche le tmp_buf en binaire
-		for(i=0;i<strlen(tmp_buf);i++){ std::bitset<8> x(tmp_buf[i]); std::cout << x << "\t" ;}
-		*/
+	tmp_buf[3] = buf[index+0];
+	tmp_buf[2] = buf[index+1];
+	tmp_buf[1] = buf[index+2];
+	tmp_buf[0] = buf[index+3];
+		int i; //affiche le tmp_buf en binaire
+		//printf("length: %zu\n",strlen(tmp_buf));
+		for(i=0;i<4;i++){ std::bitset<8> x(tmp_buf[i]); std::cout << x << "\t" ;}
+printf("\n");
+
+	for(int i=0; i<4; ++i)
+			printf("%x\t", tmp_buf[i] & 0xff);
+	printf("\n");
+		
 	float f;
 	memcpy(&f, &tmp_buf, sizeof(f));
+
+
+	printf("float: %f\n",f);
 	return static_cast<double>(f);
 }
 
