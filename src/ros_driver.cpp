@@ -140,8 +140,9 @@ public:
         return success;
     }
 
-private:
     DavinciDriver _low_level_driver;
+
+private:
 
     hardware_interface::JointStateInterface _joint_state_interface;
     hardware_interface::PositionJointInterface _position_joint_interface;
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
 
         // update the diagnostics with motor active states
         // this will only update if the update interval is reached.
-        //diag_updater.update();
+        diag_updater.update();
 
         r.sleep();
     }

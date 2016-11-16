@@ -279,6 +279,7 @@ void DavinciDriver::read()
             std::vector<double>::const_iterator start = _sbRioDrivers[i]->joint_positions.begin();
             std::vector<double>::const_iterator stop = _sbRioDrivers[i]->joint_positions.end();
             pos_iter = std::copy(start, stop, pos_iter);
+
             //Velocities
             start = _sbRioDrivers[i]->joint_velocities.begin();
             stop = _sbRioDrivers[i]->joint_velocities.end();
@@ -287,6 +288,20 @@ void DavinciDriver::read()
             start = _sbRioDrivers[i]->joint_efforts.begin();
             stop = _sbRioDrivers[i]->joint_efforts.end();
             eff_iter = std::copy(start, stop, eff_iter);
+
+
+
+	    /*std::cout << "positions: ";
+	    for(int j=0;j<joint_positions.size();j++) std::cout<<joint_positions[j] << "\t";
+	    std::cout << std::endl;
+
+	    std::cout << "velocity: ";
+	    for(int j=0;j<joint_velocities.size();j++) std::cout<<joint_velocities[j] << "\t";
+	    std::cout << std::endl;
+
+	    std::cout << "effort: ";
+	    for(int j=0;j<joint_efforts.size();j++) std::cout<<joint_efforts[j] << "\t";
+	    std::cout << std::endl;*/
         }
     }
     else

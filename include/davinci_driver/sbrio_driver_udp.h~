@@ -4,6 +4,14 @@
 #include <string>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <stdexcept>
+#include <boost/array.hpp>
+#include <boost/regex.hpp>
+
+
+#include <iostream>
+#include <fstream>
+
 
 #define FLOAT_LENGTH 4 //length of a float (in bytes)
 #define NUMBER_OF_JOINTS 5 //number of value sent
@@ -52,6 +60,11 @@ private:
     char _bool_to_char(std::vector<bool> b_vect);
     void _char_to_bool(char c,std::vector<bool> b_vect);
 
+
+    //time measurement for testing:
+
+    std::ofstream _received_packets;
+    std::ofstream _sent_packets;
 };
 
 #endif

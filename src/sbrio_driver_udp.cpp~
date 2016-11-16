@@ -1,6 +1,4 @@
-#include <stdexcept>
-#include <boost/array.hpp>
-#include <boost/regex.hpp>
+
 
 #include "davinci_driver/sbrio_driver_udp.h"
 
@@ -24,6 +22,9 @@ SbrioDriver_UDP::SbrioDriver_UDP(std::string robot_ip, unsigned short robot_port
 {
     ip::address_v4 ip_asio_t = ip::address_v4::from_string(robot_ip);
     _robot_ep = ip::udp::endpoint(ip_asio_t, robot_port);
+
+    _received_packets.open("/home/uurcz/received.csv");
+    _sent_packets.open("/home/uurcz/sent.csv");
 }
 
 
@@ -48,6 +49,9 @@ SbrioDriver_UDP::~SbrioDriver_UDP()
 	_loop_thread.join();
 
 	std::cout << "sbrio driver shutting down" << std::endl;
+
+	_received_packets.close();
+	_sent_packets.close();
 }
 
 /// Connect to the robot
@@ -75,7 +79,7 @@ void SbrioDriver_UDP::connect()
    std::vector<std::string> names_list(args,args+5);
    
    joint_names = names_list;
-   for(i=0;i<NUMBER_OF_JOINTS;i++){
+   for(i=0;i<NUMBER_OF_JOINTS+1;i++){
 	joint_positions.push_back(0.0);
 	joint_velocities.push_back(0.0);
 	joint_efforts.push_back(0.0);
@@ -135,7 +139,8 @@ void SbrioDriver_UDP::_loop()
 
 			//memcpy(&send_buf, &joint_setpoints, sizeof(joint_setpoints));
 
-			for(i=0;i<joint_setpoints.size();i++){
+			for(i=0;i<NUMBER_OF_JOINTS;i++)//joint_setpoints.size();i++){
+			{	
 				float f = (float)joint_setpoints[i];
 				char *floatToConvert = (char*)&f;
 				char convertedFloat[FLOAT_LENGTH];
@@ -149,8 +154,9 @@ void SbrioDriver_UDP::_loop()
 		if (new_motor_enables)
 		{
 			boost::lock_guard<boost::mutex> state_guard(state_mutex);		
-			send_buf[motor_names.size()*sizeof(float)] = _bool_to_char(motors_enabled);
-
+			//send_buf[motor_names.size()*sizeof(float)] = _bool_to_char(motors_enabled);
+			send_buf[NUMBER_OF_JOINTS*sizeof(float)] = _bool_to_char(motors_enabled);	
+			
 			new_motor_enables = false;
 			new_contents = true;
 		}
@@ -160,8 +166,14 @@ void SbrioDriver_UDP::_loop()
 			std::cout << std::endl;*/
 
 
-		if (new_contents)
+		if (new_contents){
 			_socket.send(boost::asio::buffer(send_buf));
+
+			struct timespec spec;
+			clock_gettime(CLOCK_REALTIME, &spec);
+			_sent_packets << spec.tv_sec <<"."<< spec.tv_nsec <<";\n";
+
+		}
 
 
 		//Connection timeout detection
@@ -202,7 +214,13 @@ void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
 	//printf("Message received\n");
 	if (!error || error == boost::asio::error::message_size)
 	{
-		int vector_length = FLOAT_LENGTH * motor_names.size();
+		//take time measurements
+		struct timespec spec;
+		clock_gettime(CLOCK_REALTIME, &spec);
+		_received_packets << spec.tv_sec <<"."<< spec.tv_nsec <<";\n";
+
+
+		int vector_length = FLOAT_LENGTH * NUMBER_OF_JOINTS;//motor_names.size();
 		int i;
 
 		boost::lock_guard<boost::mutex> state_guard(state_mutex);
@@ -213,13 +231,15 @@ void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
 
 		//packet handling
 		//update the position, velocity and effort for each motor
-		for(i=0;i<motor_names.size();i++)
+		for(i=0;i<NUMBER_OF_JOINTS;i++)//motor_names.size();i++)
 		{	
 
 			joint_positions[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH);
 			joint_velocities[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH + vector_length);
 			joint_efforts[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH + vector_length*2);
+
 		}
+		//printf("\n");
 		//update the motors_active vector
 		_char_to_bool(_rcv_buf[vector_length*3], motors_active);
 	}
@@ -242,7 +262,7 @@ double SbrioDriver_UDP::_binary_to_double(char* buf, int index)
 	tmp_buf[2] = buf[index+1];
 	tmp_buf[1] = buf[index+2];
 	tmp_buf[0] = buf[index+3];
-		int i; //affiche le tmp_buf en binaire
+		/*int i; //affiche le tmp_buf en binaire
 		//printf("length: %zu\n",strlen(tmp_buf));
 		for(i=0;i<4;i++){ std::bitset<8> x(tmp_buf[i]); std::cout << x << "\t" ;}
 printf("\n");
@@ -250,12 +270,12 @@ printf("\n");
 	for(int i=0; i<4; ++i)
 			printf("%x\t", tmp_buf[i] & 0xff);
 	printf("\n");
-		
+		*/
 	float f;
 	memcpy(&f, &tmp_buf, sizeof(f));
 
 
-	printf("float: %f\n",f);
+	//printf("float: %f\n",f);
 	return static_cast<double>(f);
 }
 
@@ -269,6 +289,7 @@ char SbrioDriver_UDP::_bool_to_char(std::vector<bool> b_vect)
 
 	for(i=0;i<b_vect.size();i++) c = (c << 1) + b_vect[i];
 
+	printf("%x\n", c & 0xff);
 	return c;
 }
 
