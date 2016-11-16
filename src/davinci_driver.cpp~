@@ -40,7 +40,7 @@ DavinciDriver::DavinciDriver(std::vector<std::pair<std::string, unsigned short> 
     std::vector<std::pair<std::string, unsigned short> >::iterator i;
     for (i = robot_ips.begin(); i != robot_ips.end(); ++i)
     {
-        boost::shared_ptr<SbrioDriver_UDP> p(new SbrioDriver_UDP(i->first, i->second));
+        boost::shared_ptr<SbrioDriver_DUP> p(new SbrioDriver_UDP(i->first, i->second));
         _sbRioDrivers.push_back(p);
     }
 }

@@ -52,7 +52,7 @@ public:
     void enable_motor(std::string motor_name, bool enable);
 
 private:
-    std::vector<boost::shared_ptr<SbrioDriver_UDP> > _sbRioDrivers;
+    std::vector<boost::shared_ptr<SbrioDriver> > _sbRioDrivers;
 
     mutable bool _all_initialized;
 };
