@@ -74,6 +74,7 @@ void SbrioDriver_UDP::connect()
    //const char* args[] = {"p4_hand_roll", "p4_hand_pitch", "p4_instrument_roll", "p4_instrument_pitch"};
    std::vector<std::string> names_list(args,args+5);
    
+   joint_names = names_list;
    for(i=0;i<NUMBER_OF_JOINTS;i++){
 	joint_positions.push_back(0.0);
 	joint_velocities.push_back(0.0);
@@ -83,6 +84,9 @@ void SbrioDriver_UDP::connect()
 	joint_setpoints.push_back(0.1*i);
         joint_setpoints_mask.push_back(false);
    }
+
+	joint_names = names_list;
+
 	motors_enabled.push_back(true);
 	motors_enabled.push_back(true);
 	motors_enabled.push_back(true);
@@ -142,7 +146,7 @@ void SbrioDriver_UDP::_loop()
 		}
 		if (new_contents)
 			_socket.send(boost::asio::buffer(send_buf));
-			//_socket.send_to(boost::asio::buffer(send_buf), _robot_ep);
+
 
 		//Connection timeout detection
 		_no_packet_received++;

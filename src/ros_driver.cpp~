@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
 	ROS_INFO_STREAM("udpate");
         // update the diagnostics with motor active states
         // this will only update if the update interval is reached.
-        //diag_updater.update();
+        diag_updater.update();
 
         r.sleep();
     }

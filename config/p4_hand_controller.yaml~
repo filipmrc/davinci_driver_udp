@@ -9,6 +9,5 @@ davinci:
         joints:
           - p4_hand_roll
           - p4_hand_pitch
-          - p4_instrument_slide
           - p4_instrument_roll
           - p4_instrument_pitch
