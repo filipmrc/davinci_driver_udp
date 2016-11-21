@@ -14,7 +14,7 @@
 
 
 #define FLOAT_LENGTH 4 //length of a float (in bytes)
-#define NUMBER_OF_JOINTS 5 //number of value sent
+#define NUMBER_OF_JOINTS 7 //number of value sent
 
 class SbrioDriver_UDP
 {

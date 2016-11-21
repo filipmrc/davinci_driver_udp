@@ -68,8 +68,8 @@ public:
             hardware_interface::JointStateHandle state_handle(
                 joint_names[i],
                 &_low_level_driver.joint_positions[i],
-                &_low_level_driver.joint_velocities[i],
-                &_low_level_driver.joint_efforts[i]
+                &_low_level_driver.joint_efforts[i],
+                &_low_level_driver.joint_velocities[i]
             );
             _joint_state_interface.registerHandle(state_handle);
 
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 
     // Now to the business
     ros::Time last = ros::Time::now();
-    ros::Rate r(100);
+    ros::Rate r(10);
     while(ros::ok())
     {
         // ros_control loop

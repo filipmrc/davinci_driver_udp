@@ -291,7 +291,7 @@ void DavinciDriver::read()
 
 
 
-	    std::cout << "positions: ";
+	    /*std::cout << "positions: ";
 	    for(int j=0;j<joint_positions.size();j++) std::cout<<joint_positions[j] << "\t";
 	    std::cout << std::endl;
 
