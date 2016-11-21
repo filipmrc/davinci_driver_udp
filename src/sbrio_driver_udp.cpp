@@ -1,4 +1,4 @@
-
+/// some of the code comes from http://www.boost.org/doc/libs/1_52_0/doc/html/boost_asio/example/timeouts/blocking_udp_client.cpp
 
 #include "davinci_driver/sbrio_driver_udp.h"
 
@@ -14,14 +14,25 @@ using namespace boost::asio;
 SbrioDriver_UDP::SbrioDriver_UDP(std::string robot_ip, unsigned short robot_port)
 :
     _socket(_io_service, ip::udp::endpoint(ip::udp::v4(), robot_port)),
+    _deadline(_io_service),
     _connected(false),
     _initialized(false),
     _no_packet_received(0),
+    _ec(boost::asio::error::would_block),
     new_setpoints(false),
     new_motor_enables(false)
 {
     ip::address_v4 ip_asio_t = ip::address_v4::from_string(robot_ip);
     _robot_ep = ip::udp::endpoint(ip_asio_t, robot_port);
+
+    // No deadline is required until the first socket operation is started. We
+    // set the deadline to positive infinity so that the actor takes no action
+    // until a specific deadline is set.
+    _deadline.expires_at(boost::posix_time::pos_infin);
+
+
+    // Start the persistent actor that checks for deadline expiry.
+    _check_deadline();
 
     _received_packets.open("/home/uurcz/received.csv");
     _sent_packets.open("/home/uurcz/sent.csv");
@@ -66,8 +77,8 @@ void SbrioDriver_UDP::connect()
 		_loop_thread = boost::thread(&SbrioDriver_UDP::_loop, this);
 		_connected = true;
 		std::cout << "SbrioDriver connected to the robot\n" << std::endl;
-	    	_start_receive();
-		boost::thread t(boost::bind(&boost::asio::io_service::run, &_io_service)); 
+
+		//boost::thread t(boost::bind(&boost::asio::io_service::run, &_io_service)); 
 	}
 
 
@@ -180,18 +191,30 @@ void SbrioDriver_UDP::_loop()
 
 		}
 
-
+		_receive(boost::posix_time::milliseconds(100));
+		
+		
+		if (_ec)
+		{
+			std::cout << "Receive error: " << _ec.message() << "\n"; 
+			_no_packet_received++;
+		}
+		else
+		{
+			_no_packet_received = 0;
+		}
+/*
 		//Connection timeout detection
-		_no_packet_received++;
+
 		if(_no_packet_received > 10)
 		{
 			/*printf("NO PACKET RECEIVED IN THE LAST %d MS",_no_packet_received);
 			if(_no_packet_received > 20)
 				printf(" /!!! CONNEXION TIMEOUT /!!! ");
 			printf("\n");*/
-		}
+		//}
 
-        boost::this_thread::sleep(boost::posix_time::milliseconds(1.5));
+        boost::this_thread::sleep(boost::posix_time::milliseconds(200));
 	}
 }
 
@@ -200,24 +223,43 @@ void SbrioDriver_UDP::_loop()
 
 ///Schedule an asynchronous receive
 ///
-void SbrioDriver_UDP::_start_receive(){
-	//printf("start receive\n");
+  void SbrioDriver_UDP::_receive(boost::posix_time::time_duration timeout)
+  {
+    // Set a deadline for the asynchronous operation.
+    _deadline.expires_from_now(timeout);
+
+    // Set up the variables that receive the result of the asynchronous
+    // operation. The error code is set to would_block to signal that the
+    // operation is incomplete. Asio guarantees that its asynchronous
+    // operations will never fail with would_block, so any other value in
+    // ec indicates completion.
+    _ec = boost::asio::error::would_block;
+    std::size_t length = 0;
+    // Start the asynchronous operation itself. The _handle_receive function
+    // used as a callback will update the _ec.
+
 	_socket.async_receive(boost::asio::buffer(_rcv_buf), 
 				boost::bind(&SbrioDriver_UDP::_handle_receive, this,
           				boost::asio::placeholders::error,
           				boost::asio::placeholders::bytes_transferred));
-	
-}
+
+    // Block until the asynchronous operation has completed.
+    do _io_service.run_one(); while (_ec == boost::asio::error::would_block);
+
+    //return length;
+  }
 
 ///handle the data received and schedule a new asynchronous receive
 ///the parameters are handled by the bind fonction in _start_receive()
 ///
 void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
-      std::size_t /*bytes_transferred*/)
+ std::size_t)
 {
+_ec = error;
 	//printf("Message received\n");
 	if (!error || error == boost::asio::error::message_size)
 	{
+
 		//take time measurements
 		struct timespec spec;
 		clock_gettime(CLOCK_REALTIME, &spec);
@@ -235,7 +277,7 @@ void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
 		boost::lock_guard<boost::mutex> state_guard(state_mutex);
 
 		//connexion timeout tracking
-		_no_packet_received = 0;
+		//_no_packet_received = 0;
 	
 
 		//packet handling
@@ -255,8 +297,7 @@ void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
 	else
 		std::cout<<error<<std::endl;
 	 
-	//schedule a new asynchronous receive
-	_start_receive();
+
 }
 
 /// converts the binary code stored as char into a double
@@ -317,3 +358,27 @@ void SbrioDriver_UDP::_char_to_bool(char c,std::vector<bool> b_vect)
 		c = (c >> 1);
 	}
 }
+
+void SbrioDriver_UDP::_check_deadline()
+  {
+    // Check whether the deadline has passed. We compare the deadline against
+    // the current time since a new asynchronous operation may have moved the
+    // deadline before this actor had a chance to run.
+    if (_deadline.expires_at() <= deadline_timer::traits_type::now())
+    {
+      // The deadline has passed. The outstanding asynchronous operation needs
+      // to be cancelled so that the blocked receive() function will return.
+      //
+      // Please note that cancel() has portability issues on some versions of
+      // Microsoft Windows, and it may be necessary to use close() instead.
+      // Consult the documentation for cancel() for further information.
+      _socket.cancel();
+
+      // There is no longer an active deadline. The expiry is set to positive
+      // infinity so that the actor takes no action until a new deadline is set.
+      _deadline.expires_at(boost::posix_time::pos_infin);
+    }
+
+    // Put the actor back to sleep.
+    _deadline.async_wait(boost::bind(&SbrioDriver_UDP::_check_deadline, this));
+  }
