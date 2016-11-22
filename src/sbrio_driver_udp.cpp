@@ -191,7 +191,7 @@ void SbrioDriver_UDP::_loop()
 
 		}
 
-		_receive(boost::posix_time::milliseconds(100));
+		_receive(boost::posix_time::milliseconds(2));
 		
 		
 		if (_ec)
@@ -214,7 +214,7 @@ void SbrioDriver_UDP::_loop()
 			printf("\n");*/
 		//}
 
-        boost::this_thread::sleep(boost::posix_time::milliseconds(200));
+        //boost::this_thread::sleep(boost::posix_time::milliseconds(1));
 	}
 }
 
@@ -246,7 +246,8 @@ void SbrioDriver_UDP::_loop()
     // Block until the asynchronous operation has completed.
     do _io_service.run_one(); while (_ec == boost::asio::error::would_block);
 
-    //return length;
+    //_deadline.wait();
+
   }
 
 ///handle the data received and schedule a new asynchronous receive
