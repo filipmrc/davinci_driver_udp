@@ -62,25 +62,95 @@ public:
         }
         ROS_INFO("Connection to Davinci established.");
 
-        std::vector<std::string> joint_names = _low_level_driver.get_joint_names();
-        for(size_t i = 0; i < joint_names.size(); ++i)
-        {
-            hardware_interface::JointStateHandle state_handle(
-                joint_names[i],
-                &_low_level_driver.joint_positions[i],
-                &_low_level_driver.joint_efforts[i],
-                &_low_level_driver.joint_velocities[i]
-            );
-            _joint_state_interface.registerHandle(state_handle);
 
-            hardware_interface::JointHandle position_handle(
-                state_handle,
-                &_low_level_driver.joint_positions[i]
+	//TODO: this is a test
+	//std::vector<double> test;
+	//for(int j = 0;j<5;j++) test.push_back(1.0);
+	
+
+
+        std::vector<std::string> joint_names = _low_level_driver.get_joint_names();
+        //for(size_t i = 0; i < joint_names.size(); ++i)
+        //{
+int i = 0;
+            hardware_interface::JointStateHandle state_handle1(
+                joint_names[i],
+		//&test[i],
+                &_low_level_driver.joint_positions[i],
+                &_low_level_driver.joint_velocities[i],
+                &_low_level_driver.joint_efforts[i]
             );
-            _position_joint_interface.registerHandle(position_handle);
-        }
+            _joint_state_interface.registerHandle(state_handle1);
+
+            hardware_interface::JointHandle position_handle1(
+                state_handle1,
+                &_low_level_driver.joint_setpoints[i]
+            );
+            _position_joint_interface.registerHandle(position_handle1);
+i=1;
+            hardware_interface::JointStateHandle state_handle2(
+                joint_names[i],
+		//&test[i],
+                &_low_level_driver.joint_positions[i],
+                &_low_level_driver.joint_velocities[i],
+                &_low_level_driver.joint_efforts[i]
+            );
+            _joint_state_interface.registerHandle(state_handle2);
+
+            hardware_interface::JointHandle position_handle2(
+                state_handle2,
+                &_low_level_driver.joint_setpoints[i]
+            );
+            _position_joint_interface.registerHandle(position_handle2);
+i=2;
+            hardware_interface::JointStateHandle state_handle3(
+                joint_names[i],
+		//&test[i],
+                &_low_level_driver.joint_positions[i],
+                &_low_level_driver.joint_velocities[i],
+                &_low_level_driver.joint_efforts[i]
+            );
+            _joint_state_interface.registerHandle(state_handle3);
+
+            hardware_interface::JointHandle position_handle3(
+                state_handle3,
+                &_low_level_driver.joint_setpoints[i]
+            );
+            _position_joint_interface.registerHandle(position_handle3);
+i=3;
+            hardware_interface::JointStateHandle state_handle4(
+                joint_names[i],
+		//&test[i],
+                &_low_level_driver.joint_positions[i],
+                &_low_level_driver.joint_velocities[i],
+                &_low_level_driver.joint_efforts[i]
+            );
+            _joint_state_interface.registerHandle(state_handle4);
+
+            hardware_interface::JointHandle position_handle4(
+                state_handle4,
+                &_low_level_driver.joint_setpoints[i]
+            );
+            _position_joint_interface.registerHandle(position_handle4);
+i=4;
+            hardware_interface::JointStateHandle state_handle5(
+                joint_names[i],
+		//&test[i],
+                &_low_level_driver.joint_positions[i],
+                &_low_level_driver.joint_velocities[i],
+                &_low_level_driver.joint_efforts[i]
+            );
+            _joint_state_interface.registerHandle(state_handle5);
+
+            hardware_interface::JointHandle position_handle5(
+                state_handle5,
+                &_low_level_driver.joint_setpoints[i]
+            );
+            _position_joint_interface.registerHandle(position_handle5);
+        //}
         registerInterface(&_joint_state_interface);
         registerInterface(&_position_joint_interface);
+	printf("ROS: %p\n", (void *)&_low_level_driver.joint_positions[0]);
 
         ROS_INFO("Davinci driver initialized.");
     };
@@ -185,7 +255,7 @@ int main(int argc, char *argv[])
     }
 
     // Everything is in order; start a spinner
-    ros::AsyncSpinner spinner(1); // Use 1 thread for spinning.
+    ros::AsyncSpinner spinner(2); // Use 1 thread for spinning.
     spinner.start();
 
     // and start the driver:
@@ -211,7 +281,7 @@ int main(int argc, char *argv[])
 
     // Now to the business
     ros::Time last = ros::Time::now();
-    ros::Rate r(10);
+    ros::Rate r(100);
     while(ros::ok())
     {
         // ros_control loop
@@ -225,6 +295,8 @@ int main(int argc, char *argv[])
         // update the diagnostics with motor active states
         // this will only update if the update interval is reached.
         diag_updater.update();
+
+	//printf("ROS: %f\n",ros_driver._low_level_driver.joint_positions[0]);
 
         r.sleep();
     }

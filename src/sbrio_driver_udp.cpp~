@@ -77,15 +77,14 @@ void SbrioDriver_UDP::connect()
 		_loop_thread = boost::thread(&SbrioDriver_UDP::_loop, this);
 		_connected = true;
 		std::cout << "SbrioDriver connected to the robot\n" << std::endl;
-
-		//boost::thread t(boost::bind(&boost::asio::io_service::run, &_io_service)); 
 	}
 
 
     //TODO: this will be handled in the davinci_driver but is needed for testing purpose
    boost::lock_guard<boost::mutex> state_guard(state_mutex);
    int i;
-   const char* args[] = {"p4_hand_roll", "p4_hand_pitch", "p4_instrument_slide", "p4_instrument_roll", "p4_instrument_pitch"};
+   //const char* args[] = {"p4_hand_roll", "p4_hand_pitch", "p4_instrument_slide",  "p4_instrument_roll", "p4_instrument_pitch","p4_instrument_jaw_left","p4_instrument_jaw_right", "p4_instrument_pitch"};
+   const char* args[] = {"p4_hand_roll", "p4_hand_pitch", "p4_instrument_slide",  "p4_instrument_roll", "p4_instrument_pitch"};
 
    std::vector<std::string> names_list(args,args+5);
    
@@ -100,11 +99,11 @@ void SbrioDriver_UDP::connect()
         joint_setpoints_mask.push_back(false);
    }
 
-	joint_setpoints.push_back(1.0);
-	joint_setpoints.push_back(-1.0);
-	joint_setpoints.push_back(1.0);
-	joint_setpoints.push_back(1.0);
-	joint_setpoints.push_back(1.0);
+	joint_setpoints.push_back(0.0);
+	joint_setpoints.push_back(0.0);
+	joint_setpoints.push_back(0.0);
+	joint_setpoints.push_back(0.0);
+	joint_setpoints.push_back(0.0);
 	//joint_names = names_list;
 
 
@@ -158,20 +157,23 @@ void SbrioDriver_UDP::_loop()
 			for(i=0;i<NUMBER_OF_JOINTS;i++)//joint_setpoints.size();i++){
 			{	
 				float f = (float)joint_setpoints[i];
+				printf("%f\t",f);
 				char *floatToConvert = (char*)&f;
 				char convertedFloat[FLOAT_LENGTH];
 				for(j=0;j<FLOAT_LENGTH;j++)
-					convertedFloat[j] = 0xff;//floatToConvert[FLOAT_LENGTH-1-j];
-				memcpy(&send_buf[i],&convertedFloat, sizeof(f));
+					convertedFloat[j] = floatToConvert[FLOAT_LENGTH-1-j];//convertedFloat[j] = 0xff;//
+				memcpy(&send_buf[i*sizeof(f)],&convertedFloat, sizeof(f));
 			}
+			printf("\n");
+
 			//new_setpoints = false; //TODO this line should be uncommented for "real" operation
 			new_contents = true;
 		}
 		if (new_motor_enables)
 		{
 			boost::lock_guard<boost::mutex> state_guard(state_mutex);		
-			send_buf[NUMBER_OF_JOINTS*sizeof(float)] = _bool_to_char(motors_enabled);
-			//send_buf[NUMBER_OF_JOINTS*sizeof(float)] = 0xff;//_bool_to_char(motors_enabled);	
+			//send_buf[NUMBER_OF_JOINTS*sizeof(float)] = _bool_to_char(motors_enabled);
+			send_buf[NUMBER_OF_JOINTS*sizeof(float)] = 0xff;//_bool_to_char(motors_enabled);	
 			
 			new_motor_enables = false;
 			new_contents = true;
@@ -180,7 +182,8 @@ void SbrioDriver_UDP::_loop()
 			/*for(i=0;i<send_buf.size();i++)
 				std::cout << std::hex <<(int)joint_setpoints[i];
 			std::cout << std::endl;*/
-
+			/*for(i = 0; i<send_buf.length();i++) printf("%c",send_buf[i]);
+			printf("\n");*/
 
 		if (new_contents){
 			_socket.send(boost::asio::buffer(send_buf));
@@ -214,7 +217,7 @@ void SbrioDriver_UDP::_loop()
 			printf("\n");*/
 		//}
 
-        //boost::this_thread::sleep(boost::posix_time::milliseconds(1));
+        boost::this_thread::sleep(boost::posix_time::milliseconds(2));
 	}
 }
 
@@ -247,7 +250,7 @@ void SbrioDriver_UDP::_loop()
     do _io_service.run_one(); while (_ec == boost::asio::error::would_block);
 
     //_deadline.wait();
-    //return length;
+
   }
 
 ///handle the data received and schedule a new asynchronous receive

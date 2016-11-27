@@ -289,9 +289,9 @@ void DavinciDriver::read()
             stop = _sbRioDrivers[i]->joint_efforts.end();
             eff_iter = std::copy(start, stop, eff_iter);
 
+//printf("%p\n", (void *)&joint_positions[0]);
 
-
-	    /*std::cout << "positions: ";
+/*	    std::cout << "positions: ";
 	    for(int j=0;j<joint_positions.size();j++) std::cout<<joint_positions[j] << "\t";
 	    std::cout << std::endl;
 
@@ -314,7 +314,7 @@ void DavinciDriver::write()
 {
     if (_all_initialized)
     {
-        std::vector<double>::iterator set_iter = joint_positions.begin();
+        std::vector<double>::iterator set_iter = joint_setpoints.begin(); //TODO check if it really should be positions and not setpoints
         for (size_t i = 0; i < _sbRioDrivers.size(); ++i)
         {
             boost::lock_guard<boost::mutex> state_guard(_sbRioDrivers[i]->state_mutex);
