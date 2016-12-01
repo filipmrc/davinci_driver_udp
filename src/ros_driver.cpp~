@@ -72,7 +72,7 @@ public:
         std::vector<std::string> joint_names = _low_level_driver.get_joint_names();
         //for(size_t i = 0; i < joint_names.size(); ++i)
         //{
-	int i = 0;
+int i = 0;
             hardware_interface::JointStateHandle state_handle1(
                 joint_names[i],
 		//&test[i],
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
         cm.update(current_time, current_time - last);
         ros_driver.write();
         last = current_time;
-
+	printf("pos:%f\n",ros_driver._low_level_driver.joint_positions[2]);
         // update the diagnostics with motor active states
         // this will only update if the update interval is reached.
         diag_updater.update();

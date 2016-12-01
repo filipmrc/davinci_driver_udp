@@ -34,8 +34,8 @@ SbrioDriver_UDP::SbrioDriver_UDP(std::string robot_ip, unsigned short robot_port
     // Start the persistent actor that checks for deadline expiry.
     _check_deadline();
 
-    _received_packets.open("/home/uurcz/received.csv");
-    _sent_packets.open("/home/uurcz/sent.csv");
+    //_received_packets.open("/home/uurcz/received.csv");
+    //_sent_packets.open("/home/uurcz/sent.csv");
 }
 
 
@@ -157,23 +157,23 @@ void SbrioDriver_UDP::_loop()
 			for(i=0;i<NUMBER_OF_JOINTS;i++)//joint_setpoints.size();i++){
 			{	
 				float f = (float)joint_setpoints[i];
-				printf("%f\t",f);
+				//printf("%f\t",f);
 				char *floatToConvert = (char*)&f;
 				char convertedFloat[FLOAT_LENGTH];
 				for(j=0;j<FLOAT_LENGTH;j++)
 					convertedFloat[j] = floatToConvert[FLOAT_LENGTH-1-j];//convertedFloat[j] = 0xff;//
 				memcpy(&send_buf[i*sizeof(f)],&convertedFloat, sizeof(f));
 			}
-			printf("\n");
+			//printf("\n");
 
-			//new_setpoints = false; //TODO this line should be uncommented for "real" operation
+			new_setpoints = false; //TODO this line should be uncommented for "real" operation
 			new_contents = true;
 		}
 		if (new_motor_enables)
 		{
 			boost::lock_guard<boost::mutex> state_guard(state_mutex);		
-			//send_buf[NUMBER_OF_JOINTS*sizeof(float)] = _bool_to_char(motors_enabled);
-			send_buf[NUMBER_OF_JOINTS*sizeof(float)] = 0xff;//_bool_to_char(motors_enabled);	
+			send_buf[NUMBER_OF_JOINTS*sizeof(float)] = _bool_to_char(motors_enabled);
+			//send_buf[NUMBER_OF_JOINTS*sizeof(float)] = 0xff;//_bool_to_char(motors_enabled);	
 			
 			new_motor_enables = false;
 			new_contents = true;
@@ -185,37 +185,39 @@ void SbrioDriver_UDP::_loop()
 			/*for(i = 0; i<send_buf.length();i++) printf("%c",send_buf[i]);
 			printf("\n");*/
 
-		if (new_contents){
+		if (new_contents){ //If some new data are present in the buffer, send them
 			_socket.send(boost::asio::buffer(send_buf));
 
-			struct timespec spec;
+			/*struct timespec spec;
 			clock_gettime(CLOCK_REALTIME, &spec);
-			_sent_packets << spec.tv_sec <<"."<< spec.tv_nsec <<"\n";
-
+			_sent_packets << spec.tv_sec <<"."<< spec.tv_nsec <<"\n";*/
 		}
 
+		//Timed receive & packet handling
 		_receive(boost::posix_time::milliseconds(2));
 		
 		
+		// Error handling
 		if (_ec)
 		{
-			std::cout << "Receive error: " << _ec.message() << "\n"; 
+			std::cout << _ec <<"Receive error: " << _ec.message() << "\n"; 
 			_no_packet_received++;
+
+			if(_no_packet_received > 10) //If consecutive errors occur print out a message
+			{
+				printf("NO PACKET RECEIVED IN THE LAST %d MS",_no_packet_received);
+				if(_no_packet_received > 20)
+					printf(" /!!! CONNEXION TIMEOUT /!!! ");
+				printf("\n");
+			}
 		}
 		else
 		{
 			_no_packet_received = 0;
 		}
-/*
+
 		//Connection timeout detection
 
-		if(_no_packet_received > 10)
-		{
-			/*printf("NO PACKET RECEIVED IN THE LAST %d MS",_no_packet_received);
-			if(_no_packet_received > 20)
-				printf(" /!!! CONNEXION TIMEOUT /!!! ");
-			printf("\n");*/
-		//}
 
         boost::this_thread::sleep(boost::posix_time::milliseconds(2));
 	}
@@ -224,8 +226,8 @@ void SbrioDriver_UDP::_loop()
 
 
 
-///Schedule an asynchronous receive
-///
+/// Schedule an asynchronous receive
+/// from http://www.boost.org/doc/libs/1_52_0/doc/html/boost_asio/example/timeouts/blocking_udp_client.cpp
   void SbrioDriver_UDP::_receive(boost::posix_time::time_duration timeout)
   {
     // Set a deadline for the asynchronous operation.
@@ -259,49 +261,35 @@ void SbrioDriver_UDP::_loop()
 void SbrioDriver_UDP::_handle_receive(const boost::system::error_code& error,
  std::size_t)
 {
-_ec = error;
-	//printf("Message received\n");
-	if (!error || error == boost::asio::error::message_size)
-	{
+	//make the error available in the main thread
+	_ec = error;
 
+	if (!error || error == boost::asio::error::message_size) //if no error, handles the message
+	{
 		//take time measurements
-		struct timespec spec;
+		/*struct timespec spec;
 		clock_gettime(CLOCK_REALTIME, &spec);
-		_received_packets << spec.tv_sec <<"."<< spec.tv_nsec << "\n";
+		_received_packets << spec.tv_sec <<"."<< spec.tv_nsec << "\n";*/
 		
-		/*for(int j = 0; j<1; j++)
-			_received_packets << _rcv_buf[j];
-		_received_packets << "\n";*/
 
 
 
 		int vector_length = FLOAT_LENGTH * NUMBER_OF_JOINTS;//motor_names.size();
 		int i;
 
-		boost::lock_guard<boost::mutex> state_guard(state_mutex);
+		boost::lock_guard<boost::mutex> state_guard(state_mutex);	
 
-		//connexion timeout tracking
-		//_no_packet_received = 0;
-	
-
-		//packet handling
 		//update the position, velocity and effort for each motor
 		for(i=0;i<NUMBER_OF_JOINTS;i++)//motor_names.size();i++)
 		{	
-
 			joint_positions[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH);
 			joint_velocities[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH + vector_length);
 			joint_efforts[i] = _binary_to_double(&_rcv_buf[0], i*FLOAT_LENGTH + vector_length*2);
-
 		}
-		//printf("\n");
+
 		//update the motors_active vector
 		_char_to_bool(_rcv_buf[vector_length*3], motors_active);
 	}
-	else
-		std::cout<<error<<std::endl;
-	 
-
 }
 
 /// converts the binary code stored as char into a double
@@ -311,29 +299,29 @@ _ec = error;
 /// @param index The index of the first byte of the number to convert
 double SbrioDriver_UDP::_binary_to_double(char* buf, int index)
 {
-	char tmp_buf[4];
+	//load the bitcode in a buffer and take care of endianness
+	char tmp_buf[4]; 
 	tmp_buf[3] = buf[index+0];
 	tmp_buf[2] = buf[index+1];
 	tmp_buf[1] = buf[index+2];
 	tmp_buf[0] = buf[index+3];
-		/*int i; //affiche le tmp_buf en binaire
-		//printf("length: %zu\n",strlen(tmp_buf));
-		for(i=0;i<4;i++){ std::bitset<8> x(tmp_buf[i]); std::cout << x << "\t" ;}
-printf("\n");
 
+
+	/*//print the bitcode
 	for(int i=0; i<4; ++i)
-			printf("%x\t", tmp_buf[i] & 0xff);
+		printf("%x\t", tmp_buf[i] & 0xff);
 	printf("\n");
-		*/
+	*/
+
+	//copy the bitcode to the variable
 	float f;
 	memcpy(&f, &tmp_buf, sizeof(f));
-
 
 	//printf("float: %f\n",f);
 	return static_cast<double>(f);
 }
 
-///converts a vector of up to 8 boolean into a char
+/// Converts a vector of up to 8 boolean into a char
 ///
 /// @param b_vect The vector of boolean to convert
 char SbrioDriver_UDP::_bool_to_char(std::vector<bool> b_vect)
@@ -341,28 +329,28 @@ char SbrioDriver_UDP::_bool_to_char(std::vector<bool> b_vect)
 	int i;
 	char c = 0;
 
-	for(i=0;i<b_vect.size();i++) c = (c << 1) + b_vect[b_vect.size()-i];
+	for(i=0;i<b_vect.size();i++) 
+		c = (c << 1) + b_vect[b_vect.size()-i];
 
-	
 	return c;
 }
 
 
-///converts a char into a vector of booleans
+/// Converts a char into a vector of booleans
 ///
 /// @param c The char that contain the boolean as bits
 /// @param b_vect The vector of booleans to update
 void SbrioDriver_UDP::_char_to_bool(char c,std::vector<bool> b_vect)
 {
 	//printf("%x\n", c & 0xff);
-	int i;
-	for(i=0;i<b_vect.size();i++)
+	for(int i=0;i<b_vect.size();i++)
 	{
 		b_vect[i] = c%2;
 		c = (c >> 1);
 	}
 }
 
+/// from http://www.boost.org/doc/libs/1_52_0/doc/html/boost_asio/example/timeouts/blocking_udp_client.cpp
 void SbrioDriver_UDP::_check_deadline()
   {
     // Check whether the deadline has passed. We compare the deadline against

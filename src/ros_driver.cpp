@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
         cm.update(current_time, current_time - last);
         ros_driver.write();
         last = current_time;
-
+	//printf("pos:%f\n",ros_driver._low_level_driver.joint_positions[2]);
         // update the diagnostics with motor active states
         // this will only update if the update interval is reached.
         diag_updater.update();
