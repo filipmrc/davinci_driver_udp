@@ -4,9 +4,6 @@
 
 using namespace boost::asio;
 
-//#define FLOAT_LENGTH 4 //length of a float (in bytes)
-//#define NUMBER_OF_JOINTS 5 //number of value sent
-
 /// Constructor for the sbRIO driver
 ///
 /// @param robot_ip The network address of the robot.
@@ -97,6 +94,7 @@ void SbrioDriver_UDP::connect()
         motor_names.push_back(names_list[i]);
 	
         joint_setpoints_mask.push_back(false);
+	motors_enabled.push_back(true);	
    }
 
 	joint_setpoints.push_back(0.0);
@@ -106,12 +104,7 @@ void SbrioDriver_UDP::connect()
 	joint_setpoints.push_back(0.0);
 	//joint_names = names_list;
 
-
-	motors_enabled.push_back(true);
-	motors_enabled.push_back(true);
-	motors_enabled.push_back(true);
-	motors_enabled.push_back(true);
-	motors_enabled.push_back(true);
+	
 
 
 	motors_active.push_back(true);
@@ -194,7 +187,7 @@ void SbrioDriver_UDP::_loop()
 		}
 
 		//Timed receive & packet handling
-		_receive(boost::posix_time::milliseconds(2));
+		_receive(boost::posix_time::milliseconds(1));
 		
 		
 		// Error handling
@@ -205,10 +198,10 @@ void SbrioDriver_UDP::_loop()
 
 			if(_no_packet_received > 10) //If consecutive errors occur print out a message
 			{
-				printf("NO PACKET RECEIVED IN THE LAST %d MS",_no_packet_received);
-				if(_no_packet_received > 20)
-					printf(" /!!! CONNEXION TIMEOUT /!!! ");
-				printf("\n");
+				//printf("NO PACKET RECEIVED IN THE LAST %d MS",_no_packet_received);
+				//if(_no_packet_received > 20)
+					//printf(" /!!! CONNEXION TIMEOUT /!!! ");
+				//printf("\n");
 			}
 		}
 		else

@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 
     // Now to the business
     ros::Time last = ros::Time::now();
-    ros::Rate r(100);
+    ros::Rate r(10000);
     while(ros::ok())
     {
         // ros_control loop
